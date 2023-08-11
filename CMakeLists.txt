@@ -35,7 +35,7 @@ macro(add_vulkan_target)
 	target_include_directories(${ARGV0} PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/common)
 	target_link_libraries(${ARGV0} LINK_PUBLIC ${dep_libs})
 	# set_target_properties(${ARGV0} PROPERTIES LINK_FLAGS "/SUBSYSTEM:WINDOWS /ENTRY:\"mainCRTStartup\"")
-	set_target_properties(${ARGV0} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/examples/runtime")
+	# set_target_properties(${ARGV0} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/examples/runtime")
 endmacro(add_vulkan_target)
 
 add_vulkan_target(00-test)
