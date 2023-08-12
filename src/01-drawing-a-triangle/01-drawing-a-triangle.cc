@@ -61,6 +61,15 @@ struct SwapChainSupportDetails {
   std::vector<VkPresentModeKHR> presentModes;
 };
 
+const int kMaxFramesInFlight = 2;
+
+struct VulkanCommandBuffer {
+  VkCommandBuffer command_buffer;
+  VkSemaphore image_available_semaphore;
+  VkSemaphore render_finished_semaphore;
+  VkFence in_flight_fence;
+};
+
 class DrawingTriangleApp {
  public:
   void run() {
@@ -89,10 +98,12 @@ class DrawingTriangleApp {
   VkPipelineLayout pipeline_layout_;
   VkPipeline graphics_pipeline_;
   VkCommandPool command_pool_;
-  VkCommandBuffer command_buffer_;
-  VkSemaphore image_available_semaphore_;
-  VkSemaphore render_finished_semaphore_;
-  VkFence in_flight_fence_;
+  // VkCommandBuffer command_buffer_;
+  // VkSemaphore image_available_semaphore_;
+  // VkSemaphore render_finished_semaphore_;
+  // VkFence in_flight_fence_;
+  std::vector<VulkanCommandBuffer> frame_command_buffer_;
+  int current_frame_ = 0;
 
   void InitWindow() {
     glfwInit();
@@ -128,9 +139,13 @@ class DrawingTriangleApp {
   }
 
   void Cleanup() {
-    vkDestroySemaphore(device_, render_finished_semaphore_, nullptr);
-    vkDestroySemaphore(device_, image_available_semaphore_, nullptr);
-    vkDestroyFence(device_, in_flight_fence_, nullptr);
+    for (auto i = 0; i < kMaxFramesInFlight; i++) {
+      auto& cmd_buffer = frame_command_buffer_[i];
+      vkDestroySemaphore(device_, cmd_buffer.render_finished_semaphore, nullptr);
+      vkDestroySemaphore(device_, cmd_buffer.image_available_semaphore, nullptr);
+      vkDestroyFence(device_, cmd_buffer.in_flight_fence, nullptr);
+    }
+
     vkDestroyCommandPool(device_, command_pool_, nullptr);
     for (auto framebuffer : swapchain_framebuffers_) {
       vkDestroyFramebuffer(device_, framebuffer, nullptr);
@@ -775,15 +790,20 @@ class DrawingTriangleApp {
   }
 
   void CreateCommandBuffer() {
-    VkCommandBufferAllocateInfo allocInfo{};
-    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    allocInfo.commandPool = command_pool_;
-    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    allocInfo.commandBufferCount = 1;
+    frame_command_buffer_.resize(kMaxFramesInFlight);
+    for (auto i = 0; i < kMaxFramesInFlight; i++) {
+      auto& CommandBuffer = frame_command_buffer_[i];
+      VkCommandBufferAllocateInfo allocInfo{};
+      allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+      allocInfo.commandPool = command_pool_;
+      allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+      allocInfo.commandBufferCount = 1;
 
-    if (vkAllocateCommandBuffers(device_, &allocInfo, &command_buffer_) !=
-        VK_SUCCESS) {
-      throw std::runtime_error("failed to allocate command buffers!");
+      if (vkAllocateCommandBuffers(device_, &allocInfo,
+                                   &CommandBuffer.command_buffer) !=
+          VK_SUCCESS) {
+        throw std::runtime_error("failed to allocate command buffers!");
+      }
     }
   }
 
@@ -836,40 +856,49 @@ class DrawingTriangleApp {
   }
 
   void CreateSyncObjects() {
-    VkSemaphoreCreateInfo semaphoreInfo{};
-    semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+    for (auto i = 0; i < kMaxFramesInFlight; i++) {
+      auto& cmd_buffer = frame_command_buffer_[i];
+      VkSemaphoreCreateInfo semaphoreInfo{};
+      semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-    VkFenceCreateInfo fenceInfo{};
-    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-    fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+      VkFenceCreateInfo fenceInfo{};
+      fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+      fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-    if (vkCreateSemaphore(device_, &semaphoreInfo, nullptr,
-                          &image_available_semaphore_) != VK_SUCCESS ||
-        vkCreateSemaphore(device_, &semaphoreInfo, nullptr,
-                          &render_finished_semaphore_) != VK_SUCCESS ||
-        vkCreateFence(device_, &fenceInfo, nullptr, &in_flight_fence_) !=
-            VK_SUCCESS) {
-      throw std::runtime_error(
-          "failed to create synchronization objects for a frame!");
+      if (vkCreateSemaphore(device_, &semaphoreInfo, nullptr,
+                            &cmd_buffer.image_available_semaphore) !=
+              VK_SUCCESS ||
+          vkCreateSemaphore(device_, &semaphoreInfo, nullptr,
+                            &cmd_buffer.render_finished_semaphore) !=
+              VK_SUCCESS ||
+          vkCreateFence(device_, &fenceInfo, nullptr,
+                        &cmd_buffer.in_flight_fence) != VK_SUCCESS) {
+        throw std::runtime_error(
+            "failed to create synchronization objects for a frame!");
+      }
     }
   }
 
   void DrawFrame() {
-    vkWaitForFences(device_, 1, &in_flight_fence_, VK_TRUE, UINT64_MAX);
-    vkResetFences(device_, 1, &in_flight_fence_);
+    auto& cmd_buffer = frame_command_buffer_[current_frame_];
+
+    vkWaitForFences(device_, 1, &cmd_buffer.in_flight_fence, VK_TRUE,
+                    UINT64_MAX);
+    vkResetFences(device_, 1, &cmd_buffer.in_flight_fence);
 
     uint32_t imageIndex;
     vkAcquireNextImageKHR(device_, swapchain_, UINT64_MAX,
-                          image_available_semaphore_, VK_NULL_HANDLE,
+                          cmd_buffer.image_available_semaphore, VK_NULL_HANDLE,
                           &imageIndex);
 
-    vkResetCommandBuffer(command_buffer_, /*VkCommandBufferResetFlagBits*/ 0);
-    RecordCommandBuffer(command_buffer_, imageIndex);
+    vkResetCommandBuffer(cmd_buffer.command_buffer,
+                         /*VkCommandBufferResetFlagBits*/ 0);
+    RecordCommandBuffer(cmd_buffer.command_buffer, imageIndex);
 
     VkSubmitInfo submitInfo{};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-    VkSemaphore waitSemaphores[] = {image_available_semaphore_};
+    VkSemaphore waitSemaphores[] = {cmd_buffer.image_available_semaphore};
     VkPipelineStageFlags waitStages[] = {
         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
     submitInfo.waitSemaphoreCount = 1;
@@ -877,14 +906,14 @@ class DrawingTriangleApp {
     submitInfo.pWaitDstStageMask = waitStages;
 
     submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &command_buffer_;
+    submitInfo.pCommandBuffers = &cmd_buffer.command_buffer;
 
-    VkSemaphore signalSemaphores[] = {render_finished_semaphore_};
+    VkSemaphore signalSemaphores[] = {cmd_buffer.render_finished_semaphore};
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = signalSemaphores;
 
-    if (vkQueueSubmit(graphics_queue_, 1, &submitInfo, in_flight_fence_) !=
-        VK_SUCCESS) {
+    if (vkQueueSubmit(graphics_queue_, 1, &submitInfo,
+                      cmd_buffer.in_flight_fence) != VK_SUCCESS) {
       throw std::runtime_error("failed to submit draw command buffer!");
     }
 
@@ -901,6 +930,8 @@ class DrawingTriangleApp {
     presentInfo.pImageIndices = &imageIndex;
 
     vkQueuePresentKHR(present_queue_, &presentInfo);
+
+    current_frame_ = (current_frame_ + 1) % kMaxFramesInFlight;
   }
 
   static std::vector<char> ReadFile(const std::string& filename) {
