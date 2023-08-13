@@ -104,6 +104,7 @@ class DrawingTriangleApp {
   // VkFence in_flight_fence_;
   std::vector<VulkanCommandBuffer> frame_command_buffer_;
   int current_frame_ = 0;
+  bool framebuffer_resized_ = false;
 
   void InitWindow() {
     glfwInit();
@@ -112,6 +113,15 @@ class DrawingTriangleApp {
     glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
     window_ = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
+    glfwSetWindowUserPointer(window_, this);
+    glfwSetFramebufferSizeCallback(window_, FramebufferResizeCallback);
+  }
+
+  static void FramebufferResizeCallback(GLFWwindow* window, int width,
+                                        int height) {
+    auto app =
+        reinterpret_cast<DrawingTriangleApp*>(glfwGetWindowUserPointer(window));
+    app->framebuffer_resized_ = true;
   }
 
   void InitVulkan() {
@@ -138,25 +148,40 @@ class DrawingTriangleApp {
     vkDeviceWaitIdle(device_);
   }
 
+  void CleanupSwapChain() {
+    for (auto framebuffer : swapchain_framebuffers_) {
+      vkDestroyFramebuffer(device_, framebuffer, nullptr);
+    }
+
+    for (auto imageView : swapchain_image_views_) {
+      vkDestroyImageView(device_, imageView, nullptr);
+    }
+
+    vkDestroySwapchainKHR(device_, swapchain_, nullptr);
+  }
+
   void Cleanup() {
+    CleanupSwapChain();
     for (auto i = 0; i < kMaxFramesInFlight; i++) {
       auto& cmd_buffer = frame_command_buffer_[i];
-      vkDestroySemaphore(device_, cmd_buffer.render_finished_semaphore, nullptr);
-      vkDestroySemaphore(device_, cmd_buffer.image_available_semaphore, nullptr);
+      vkDestroySemaphore(device_, cmd_buffer.render_finished_semaphore,
+                         nullptr);
+      vkDestroySemaphore(device_, cmd_buffer.image_available_semaphore,
+                         nullptr);
       vkDestroyFence(device_, cmd_buffer.in_flight_fence, nullptr);
     }
 
     vkDestroyCommandPool(device_, command_pool_, nullptr);
-    for (auto framebuffer : swapchain_framebuffers_) {
-      vkDestroyFramebuffer(device_, framebuffer, nullptr);
-    }
+    // for (auto framebuffer : swapchain_framebuffers_) {
+    //   vkDestroyFramebuffer(device_, framebuffer, nullptr);
+    // }
     vkDestroyPipeline(device_, graphics_pipeline_, nullptr);
     vkDestroyPipelineLayout(device_, pipeline_layout_, nullptr);
     vkDestroyRenderPass(device_, render_pass_, nullptr);
-    for (auto imageView : swapchain_image_views_) {
-      vkDestroyImageView(device_, imageView, nullptr);
-    }
-    vkDestroySwapchainKHR(device_, swapchain_, nullptr);
+    // for (auto imageView : swapchain_image_views_) {
+    //   vkDestroyImageView(device_, imageView, nullptr);
+    // }
+    // vkDestroySwapchainKHR(device_, swapchain_, nullptr);
     vkDestroyDevice(device_, nullptr);
     if (enableValidationLayers) {
       DestroyDebugUtilsMessengerEXT(instance_, debug_messenger_, nullptr);
@@ -513,6 +538,23 @@ class DrawingTriangleApp {
 
     swapchain_image_format_ = surfaceFormat.format;
     swapchain_extent_ = extent;
+  }
+
+  void RecreateSwapChain() {
+    int width = 0, height = 0;
+    glfwGetFramebufferSize(window_, &width, &height);
+    while (width == 0 || height == 0) {
+      glfwGetFramebufferSize(window_, &width, &height);
+      glfwWaitEvents();
+    }
+
+    vkDeviceWaitIdle(device_);
+
+    CleanupSwapChain();
+
+    CreateSwapChain();
+    CreateImageViews();
+    CreateFramebuffers();
   }
 
   VkSurfaceFormatKHR ChooseSwapSurfaceFormat(
@@ -881,15 +923,21 @@ class DrawingTriangleApp {
 
   void DrawFrame() {
     auto& cmd_buffer = frame_command_buffer_[current_frame_];
-
     vkWaitForFences(device_, 1, &cmd_buffer.in_flight_fence, VK_TRUE,
                     UINT64_MAX);
-    vkResetFences(device_, 1, &cmd_buffer.in_flight_fence);
 
     uint32_t imageIndex;
-    vkAcquireNextImageKHR(device_, swapchain_, UINT64_MAX,
-                          cmd_buffer.image_available_semaphore, VK_NULL_HANDLE,
-                          &imageIndex);
+    VkResult result = vkAcquireNextImageKHR(
+        device_, swapchain_, UINT64_MAX, cmd_buffer.image_available_semaphore,
+        VK_NULL_HANDLE, &imageIndex);
+    if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+      RecreateSwapChain();
+      return;
+    } else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
+      throw std::runtime_error("failed to acquire swap chain image!");
+    }
+
+    vkResetFences(device_, 1, &cmd_buffer.in_flight_fence);
 
     vkResetCommandBuffer(cmd_buffer.command_buffer,
                          /*VkCommandBufferResetFlagBits*/ 0);
@@ -929,7 +977,15 @@ class DrawingTriangleApp {
 
     presentInfo.pImageIndices = &imageIndex;
 
-    vkQueuePresentKHR(present_queue_, &presentInfo);
+    result = vkQueuePresentKHR(present_queue_, &presentInfo);
+
+    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR ||
+        framebuffer_resized_) {
+      framebuffer_resized_ = false;
+      RecreateSwapChain();
+    } else if (result != VK_SUCCESS) {
+      throw std::runtime_error("failed to present swap chain image!");
+    }
 
     current_frame_ = (current_frame_ + 1) % kMaxFramesInFlight;
   }
