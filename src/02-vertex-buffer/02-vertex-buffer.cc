@@ -57,9 +57,12 @@ struct Vertex {
 };
 
 const static std::vector<Vertex> TriangleVertices = {
-    {{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-    {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
-    {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}};
+    {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+    {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
+    {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+    {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}};
+
+const std::vector<uint16_t> TriangleIndices = {0, 1, 2, 2, 3, 0};
 
 VkResult CreateDebugUtilsMessengerEXT(
     VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
@@ -143,6 +146,8 @@ class VertexBufferApp {
   std::vector<VulkanCommandBuffer> frame_command_buffer_;
   VkBuffer vertex_buffer_;
   VkDeviceMemory vertex_buffer_memory_;
+  VkBuffer index_buffer_;
+  VkDeviceMemory index_buffer_memory_;
   int current_frame_ = 0;
   bool framebuffer_resized_ = false;
 
@@ -177,6 +182,7 @@ class VertexBufferApp {
     CreateFramebuffers();
     CreateCommandPool();
     CreateVertexBuffer();
+    CreateIndexBuffer();
     CreateCommandBuffer();
     CreateSyncObjects();
   }
@@ -203,6 +209,8 @@ class VertexBufferApp {
 
   void Cleanup() {
     CleanupSwapChain();
+    vkDestroyBuffer(device_, index_buffer_, nullptr);
+    vkFreeMemory(device_, index_buffer_memory_, nullptr);
     vkDestroyBuffer(device_, vertex_buffer_, nullptr);
     vkFreeMemory(device_, vertex_buffer_memory_, nullptr);
     for (auto i = 0; i < kMaxFramesInFlight; i++) {
@@ -941,7 +949,10 @@ class VertexBufferApp {
     VkDeviceSize offsets[] = {0};
     vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 
-    vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+    vkCmdBindIndexBuffer(commandBuffer, index_buffer_, 0, VK_INDEX_TYPE_UINT16);
+
+    // vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+    vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(TriangleIndices.size()), 1, 0, 0, 0);
 
     vkCmdEndRenderPass(commandBuffer);
 
@@ -1044,7 +1055,8 @@ class VertexBufferApp {
   }
 
   void CreateVertexBuffer() {
-    VkDeviceSize bufferSize = sizeof(TriangleVertices[0]) * TriangleVertices.size();
+    VkDeviceSize bufferSize =
+        sizeof(TriangleVertices[0]) * TriangleVertices.size();
 
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
@@ -1061,13 +1073,34 @@ class VertexBufferApp {
     CreateBuffer(
         bufferSize,
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertex_buffer_, vertex_buffer_memory_);
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertex_buffer_,
+        vertex_buffer_memory_);
 
     CopyBuffer(stagingBuffer, vertex_buffer_, bufferSize);
 
     vkDestroyBuffer(device_, stagingBuffer, nullptr);
     vkFreeMemory(device_, stagingBufferMemory, nullptr);
   }
+
+  void CreateIndexBuffer() {
+    VkDeviceSize bufferSize = sizeof(TriangleIndices[0]) * TriangleIndices.size();
+
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
+    CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+
+    void* data;
+    vkMapMemory(device_, stagingBufferMemory, 0, bufferSize, 0, &data);
+    memcpy(data, TriangleIndices.data(), (size_t) bufferSize);
+    vkUnmapMemory(device_, stagingBufferMemory);
+
+    CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, index_buffer_, index_buffer_memory_);
+
+    CopyBuffer(stagingBuffer, index_buffer_, bufferSize);
+
+    vkDestroyBuffer(device_, stagingBuffer, nullptr);
+    vkFreeMemory(device_, stagingBufferMemory, nullptr);
+}
 
   void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage,
                     VkMemoryPropertyFlags properties, VkBuffer& buffer,
