@@ -7,4 +7,7 @@ C:\VulkanSDK\1.3.250.1\Bin\glslc.exe src\02-vertex-buffer\02-shader.frag -o buil
 C:\VulkanSDK\1.3.250.1\Bin\glslc.exe src\03-uniform-buffer\03-shader.vert -o build\Debug\03-vert.spv
 C:\VulkanSDK\1.3.250.1\Bin\glslc.exe src\03-uniform-buffer\03-shader.frag -o build\Debug\03-frag.spv
 
+C:\VulkanSDK\1.3.250.1\Bin\glslc.exe src\04-texture\04-shader.vert -o build\Debug\04-vert.spv
+C:\VulkanSDK\1.3.250.1\Bin\glslc.exe src\04-texture\04-shader.frag -o build\Debug\04-frag.spv
+
 pause

@@ -42,6 +42,7 @@ add_vulkan_target(00-test)
 add_vulkan_target(01-drawing-a-triangle)
 add_vulkan_target(02-vertex-buffer)
 add_vulkan_target(03-uniform-buffer)
+add_vulkan_target(04-texture)
 
 # add_opengl_target(color_triangle)
 # add_opengl_target(texture)
