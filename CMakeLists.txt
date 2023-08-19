@@ -20,6 +20,8 @@ if (true)
     SET_TARGET_PROPERTIES(vulkan PROPERTIES IMPORTED_LOCATION C:/VulkanSDK/1.3.250.1/Lib/vulkan-1.lib)
     include_directories(C:/VulkanSDK/1.3.250.1/Include)
 
+	include_directories(${CMAKE_SOURCE_DIR}/deps/stb)
+
 	# ADD_LIBRARY(assimp STATIC IMPORTED)
 	# SET_TARGET_PROPERTIES(assimp PROPERTIES IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/deps/assimp/lib/assimp-vc142-mtd.lib)
 
