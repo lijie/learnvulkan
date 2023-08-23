@@ -11,21 +11,26 @@ project(learnvulkan)
 # 	common/instance_renderer.cc common/directional_light.cc)
 # target_include_directories(toy PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/common)
 
+ADD_LIBRARY(vulkan STATIC IMPORTED)
+SET_TARGET_PROPERTIES(vulkan PROPERTIES IMPORTED_LOCATION C:/VulkanSDK/1.3.250.1/Lib/vulkan-1.lib)
+include_directories(C:/VulkanSDK/1.3.250.1/Include)
+
+add_library(base
+	src/base/vulkan_device.cc
+)
+target_include_directories(base PRIVATE ${CMAKE_SOURCE_DIR}/src/base)
+
 if (true)
 	ADD_LIBRARY(glfw STATIC IMPORTED)
 	SET_TARGET_PROPERTIES(glfw PROPERTIES IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/deps/glfw-3.3.8.bin.WIN64/lib-vc2022/glfw3.lib)
 	include_directories(${CMAKE_SOURCE_DIR}/deps/glfw-3.3.8.bin.WIN64/include)
-
-    ADD_LIBRARY(vulkan STATIC IMPORTED)
-    SET_TARGET_PROPERTIES(vulkan PROPERTIES IMPORTED_LOCATION C:/VulkanSDK/1.3.250.1/Lib/vulkan-1.lib)
-    include_directories(C:/VulkanSDK/1.3.250.1/Include)
 
 	include_directories(${CMAKE_SOURCE_DIR}/deps/stb)
 
 	# ADD_LIBRARY(assimp STATIC IMPORTED)
 	# SET_TARGET_PROPERTIES(assimp PROPERTIES IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/deps/assimp/lib/assimp-vc142-mtd.lib)
 
-	set(dep_libs glfw vulkan)
+	set(dep_libs glfw vulkan base)
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /utf-8 /std:c++17")
 else ()
   set(dep_libs ${dep_libs_common} ${dep_libs_linux})
