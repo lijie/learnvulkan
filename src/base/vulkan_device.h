@@ -1,3 +1,5 @@
+#pragma once
+
 #include <string>
 #include <vector>
 
@@ -5,7 +7,11 @@
 
 namespace lvk {
 
+class VulkanBuffer;
+
 class VulkanDevice {
+  friend class VulkanApp;
+
  public:
   VulkanDevice(VkPhysicalDevice physicalDevice);
   ~VulkanDevice();
@@ -25,9 +31,9 @@ class VulkanDevice {
                         VkDeviceMemory *memory, void *data = nullptr);
   VkResult CreateBuffer(VkBufferUsageFlags usageFlags,
                         VkMemoryPropertyFlags memoryPropertyFlags,
-                        vks::Buffer *buffer, VkDeviceSize size,
+                        VulkanBuffer *buffer, VkDeviceSize size,
                         void *data = nullptr);
-  void CopyBuffer(vks::Buffer *src, vks::Buffer *dst, VkQueue queue,
+  void CopyBuffer(VulkanBuffer *src, VulkanBuffer *dst, VkQueue queue,
                   VkBufferCopy *copyRegion = nullptr);
 
   VkCommandPool CreateCommandPool(
@@ -56,6 +62,11 @@ class VulkanDevice {
   std::vector<VkQueueFamilyProperties> queueFamilyProperties_;
   std::vector<std::string> supportedExtensions_;
   VkCommandPool commandPool_{VK_NULL_HANDLE};
+  struct {
+    uint32_t graphics;
+    uint32_t compute;
+    uint32_t transfer;
+  } queueFamilyIndices_;
 };
 
 }  // namespace lvk
