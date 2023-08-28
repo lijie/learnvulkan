@@ -1,9 +1,14 @@
+// ignore windows min/max
+#define NOMINMAX
+
 #include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <optional>
 #include <set>
 #include <vector>
+#include <limits>
+#include <cstdint>
 
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>

@@ -12,6 +12,8 @@ typedef struct _SwapchainBuffers {
 } SwapchainBuffer;
 
 class VulkanSwapchain {
+  friend class VulkanApp;
+
  private:
   VkInstance instance_;
   VkDevice device_;
@@ -36,5 +38,8 @@ class VulkanSwapchain {
   VkResult QueuePresent(VkQueue queue, uint32_t imageIndex,
                         VkSemaphore waitSemaphore = VK_NULL_HANDLE);
   void Cleanup();
+
+  uint32_t queueNodeIndex() { return queueNodeIndex_; }
+  uint32_t imageCount() { return imageCount_; }
 };
 }  // namespace lvk

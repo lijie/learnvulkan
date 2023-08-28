@@ -86,7 +86,7 @@ void FreeDebugCallback(VkInstance instance) {
 }
 }  // namespace debug
 
-namespace debugtuils {
+namespace debugutils {
 
 PFN_vkCmdBeginDebugUtilsLabelEXT vkCmdBeginDebugUtilsLabelEXT{nullptr};
 PFN_vkCmdEndDebugUtilsLabelEXT vkCmdEndDebugUtilsLabelEXT{nullptr};
