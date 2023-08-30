@@ -37,5 +37,7 @@ VkBool32 GetSupportedDepthFormat(VkPhysicalDevice physicalDevice,
 // stencil
 VkBool32 GetSupportedDepthStencilFormat(VkPhysicalDevice physicalDevice,
                                         VkFormat* depthStencilFormat);
+
+VkShaderModule LoadShader(const char* fileName, VkDevice device);
 }  // namespace tools
 }  // namespace lvk

@@ -1,8 +1,8 @@
 #pragma once
 
+#include <chrono>
 #include <string>
 #include <vector>
-#include <chrono>
 
 #include "commandline_parser.h"
 #include "vulkan/vulkan.h"
@@ -75,8 +75,12 @@ class VulkanApp {
   VkRenderPass renderPass = VK_NULL_HANDLE;
   VkPipelineCache pipelineCache;
   std::vector<VkFramebuffer> frameBuffers;
+  // Active frame buffer index
+  uint32_t currentBuffer = 0;
+  VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
   bool prepared{false};
 
+  std::vector<VkShaderModule> shaderModules;
 
   // win32 window
   HWND window;
@@ -84,11 +88,12 @@ class VulkanApp {
   uint32_t width = 1280;
   uint32_t height = 720;
   uint32_t destWidth = 0;
-	uint32_t destHeight = 0;
+  uint32_t destHeight = 0;
 
   bool requiresStencil{false};
 
-  std::chrono::time_point<std::chrono::high_resolution_clock> lastTimestamp, tPrevEnd;
+  std::chrono::time_point<std::chrono::high_resolution_clock> lastTimestamp,
+      tPrevEnd;
   uint32_t frameCounter = 0;
 
   CommandLineParser commandLineParser;
@@ -106,11 +111,17 @@ class VulkanApp {
   void SetupFrameBuffer();
   virtual void Render() = 0;
   void NextFrame();
+  void PrepareFrame();
+  void SubmitFrame();
 
   std::string GetWindowTitle();
 
   virtual void GetEnabledFeatures(){};
   virtual void GetEnabledExtensions() {}
+
+  std::string GetShadersPath() const;
+  VkPipelineShaderStageCreateInfo LoadShader(std::string fileName,
+                                             VkShaderStageFlagBits stage);
 
  public:
   static std::vector<const char *> args;

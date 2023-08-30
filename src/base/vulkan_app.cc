@@ -607,6 +607,58 @@ void VulkanApp::RenderLoop() {
   }
 }
 
+std::string VulkanApp::GetShadersPath() const { return ""; }
+
+VkPipelineShaderStageCreateInfo VulkanApp::LoadShader(
+    std::string fileName, VkShaderStageFlagBits stage) {
+  VkPipelineShaderStageCreateInfo shaderStage = {};
+  shaderStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+  shaderStage.stage = stage;
+#if defined(VK_USE_PLATFORM_ANDROID_KHR)
+  shaderStage.module = vks::tools::loadShader(
+      androidApp->activity->assetManager, fileName.c_str(), device);
+#else
+  shaderStage.module = tools::LoadShader(fileName.c_str(), device);
+#endif
+  shaderStage.pName = "main";
+  assert(shaderStage.module != VK_NULL_HANDLE);
+  shaderModules.push_back(shaderStage.module);
+  return shaderStage;
+}
+
+void VulkanApp::PrepareFrame() {
+  // Acquire the next image from the swap chain
+  VkResult result =
+      swapChain.AcquireNextImage(semaphores.presentComplete, &currentBuffer);
+  // Recreate the swapchain if it's no longer compatible with the surface
+  // (OUT_OF_DATE) SRS - If no longer optimal (VK_SUBOPTIMAL_KHR), wait until
+  // submitFrame() in case number of swapchain images will change on resize
+  if ((result == VK_ERROR_OUT_OF_DATE_KHR) || (result == VK_SUBOPTIMAL_KHR)) {
+    if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+      // windowResize();
+    }
+    return;
+  } else {
+    VK_CHECK_RESULT(result);
+  }
+}
+
+void VulkanApp::SubmitFrame() {
+  VkResult result =
+      swapChain.QueuePresent(queue, currentBuffer, semaphores.renderComplete);
+  // Recreate the swapchain if it's no longer compatible with the surface
+  // (OUT_OF_DATE) or no longer optimal for presentation (SUBOPTIMAL)
+  if ((result == VK_ERROR_OUT_OF_DATE_KHR) || (result == VK_SUBOPTIMAL_KHR)) {
+    // windowResize();
+    if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+      return;
+    }
+  } else {
+    VK_CHECK_RESULT(result);
+  }
+  VK_CHECK_RESULT(vkQueueWaitIdle(queue));
+}
+
 void VulkanApp::Prepare() {
   InitSwapchain();
   CreateCommandPool();

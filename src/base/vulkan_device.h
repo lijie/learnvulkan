@@ -52,6 +52,9 @@ class VulkanDevice {
   bool ExtensionSupported(std::string extension);
   VkFormat GetSupportedDepthFormat(bool checkSamplingSupport);
 
+  const VkPhysicalDeviceFeatures& features() { return features_;}
+  const VkPhysicalDeviceProperties& properties() { return properties_; }
+
  private:
   VkPhysicalDevice vkPhysicalDevice_;
   VkDevice logicalDevice_;

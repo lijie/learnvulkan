@@ -21,11 +21,14 @@ class VulkanBuffer {
                       VkDeviceSize offset = 0);
   void Destroy();
 
+  void* mapped() { return mapped_; }
+
+  VkDescriptorBufferInfo descriptor_;
+  VkBuffer buffer_{VK_NULL_HANDLE};
+
  private:
   VkDevice device_;
-  VkBuffer buffer_{VK_NULL_HANDLE};
   VkDeviceMemory memory_{VK_NULL_HANDLE};
-  VkDescriptorBufferInfo descriptor_;
   VkDeviceSize size_{0};
   VkDeviceSize alignment_{0};
   void* mapped_{nullptr};
