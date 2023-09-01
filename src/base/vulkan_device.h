@@ -54,6 +54,8 @@ class VulkanDevice {
 
   const VkPhysicalDeviceFeatures& features() { return features_;}
   const VkPhysicalDeviceProperties& properties() { return properties_; }
+  VkDevice device() const { return logicalDevice_; }
+  VkPhysicalDevice physicalDevice() const { return vkPhysicalDevice_; }
 
  private:
   VkPhysicalDevice vkPhysicalDevice_;

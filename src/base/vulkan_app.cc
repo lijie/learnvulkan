@@ -21,9 +21,9 @@ VkResult VulkanApp::CreateInstance(bool enableValidation) {
 
   VkApplicationInfo appInfo = {};
   appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-  appInfo.pApplicationName = name.c_str();
-  appInfo.pEngineName = name.c_str();
-  appInfo.apiVersion = apiVersion;
+  appInfo.pApplicationName = "Learn Vulkan";
+  appInfo.pEngineName = "Learn Vulkan";
+  appInfo.apiVersion = VK_API_VERSION_1_0;
 
   std::vector<const char*> instanceExtensions = {VK_KHR_SURFACE_EXTENSION_NAME};
 
