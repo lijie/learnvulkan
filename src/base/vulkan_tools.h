@@ -1,6 +1,8 @@
 #include <iostream>
 #include <string>
 
+#include <assert.h>
+
 #include "vulkan/vulkan.h"
 
 // Custom define for better code readability
