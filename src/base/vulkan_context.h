@@ -1,14 +1,20 @@
 #pragma once
 
-#include "vulkan/vulkan.h"
-
-#include <vector>
 #include <string>
+#include <vector>
+
+#include "vulkan/vulkan.h"
 
 namespace lvk {
 class VulkanContext {
+ public:
+  VulkanContext();
+  ~VulkanContext();
+
+  VkInstance instance() const { return instance_; }
+
  private:
-  VkInstance instance{VK_NULL_HANDLE};
+  VkInstance instance_{VK_NULL_HANDLE};
   std::vector<std::string> supportedInstanceExtensions;
   /** @brief Set of device extensions to be enabled for this example (must be
    * set in the derived constructor) */

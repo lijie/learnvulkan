@@ -4,6 +4,7 @@
 #include <iostream>
 #include <vector>
 
+#include "vulkan_context.h"
 #include "vulkan_debug.h"
 #include "vulkan_device.h"
 #include "vulkan_initializers.h"
@@ -11,167 +12,11 @@
 
 namespace lvk {
 std::vector<const char*> VulkanApp::args;
-VkResult VulkanApp::CreateInstance(bool enableValidation) {
-  this->settings.validation = enableValidation;
-
-  // Validation can also be forced via a define
-#if defined(_VALIDATION)
-  this->settings.validation = true;
-#endif
-
-  VkApplicationInfo appInfo = {};
-  appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-  appInfo.pApplicationName = "Learn Vulkan";
-  appInfo.pEngineName = "Learn Vulkan";
-  appInfo.apiVersion = VK_API_VERSION_1_0;
-
-  std::vector<const char*> instanceExtensions = {VK_KHR_SURFACE_EXTENSION_NAME};
-
-  // Enable surface extensions depending on os
-#if defined(_WIN32)
-  instanceExtensions.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
-#elif defined(VK_USE_PLATFORM_ANDROID_KHR)
-  instanceExtensions.push_back(VK_KHR_ANDROID_SURFACE_EXTENSION_NAME);
-#elif defined(_DIRECT2DISPLAY)
-  instanceExtensions.push_back(VK_KHR_DISPLAY_EXTENSION_NAME);
-#elif defined(VK_USE_PLATFORM_DIRECTFB_EXT)
-  instanceExtensions.push_back(VK_EXT_DIRECTFB_SURFACE_EXTENSION_NAME);
-#elif defined(VK_USE_PLATFORM_WAYLAND_KHR)
-  instanceExtensions.push_back(VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME);
-#elif defined(VK_USE_PLATFORM_XCB_KHR)
-  instanceExtensions.push_back(VK_KHR_XCB_SURFACE_EXTENSION_NAME);
-#elif defined(VK_USE_PLATFORM_IOS_MVK)
-  instanceExtensions.push_back(VK_MVK_IOS_SURFACE_EXTENSION_NAME);
-#elif defined(VK_USE_PLATFORM_MACOS_MVK)
-  instanceExtensions.push_back(VK_MVK_MACOS_SURFACE_EXTENSION_NAME);
-#elif defined(VK_USE_PLATFORM_HEADLESS_EXT)
-  instanceExtensions.push_back(VK_EXT_HEADLESS_SURFACE_EXTENSION_NAME);
-#endif
-
-  // Get extensions supported by the instance and store for later use
-  uint32_t extCount = 0;
-  vkEnumerateInstanceExtensionProperties(nullptr, &extCount, nullptr);
-  if (extCount > 0) {
-    std::vector<VkExtensionProperties> extensions(extCount);
-    if (vkEnumerateInstanceExtensionProperties(
-            nullptr, &extCount, &extensions.front()) == VK_SUCCESS) {
-      for (VkExtensionProperties extension : extensions) {
-        supportedInstanceExtensions.push_back(extension.extensionName);
-      }
-    }
-  }
-
-#if (defined(VK_USE_PLATFORM_IOS_MVK) || defined(VK_USE_PLATFORM_MACOS_MVK))
-  // SRS - When running on iOS/macOS with MoltenVK, enable
-  // VK_KHR_get_physical_device_properties2 if not already enabled by the
-  // example (required by VK_KHR_portability_subset)
-  if (std::find(enabledInstanceExtensions.begin(),
-                enabledInstanceExtensions.end(),
-                VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME) ==
-      enabledInstanceExtensions.end()) {
-    enabledInstanceExtensions.push_back(
-        VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
-  }
-#endif
-
-  // Enabled requested instance extensions
-  if (enabledInstanceExtensions.size() > 0) {
-    for (const char* enabledExtension : enabledInstanceExtensions) {
-      // Output message if requested extension is not available
-      if (std::find(supportedInstanceExtensions.begin(),
-                    supportedInstanceExtensions.end(),
-                    enabledExtension) == supportedInstanceExtensions.end()) {
-        std::cerr << "Enabled instance extension \"" << enabledExtension
-                  << "\" is not present at instance level\n";
-      }
-      instanceExtensions.push_back(enabledExtension);
-    }
-  }
-
-  VkInstanceCreateInfo instanceCreateInfo = {};
-  instanceCreateInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-  instanceCreateInfo.pNext = NULL;
-  instanceCreateInfo.pApplicationInfo = &appInfo;
-
-#if (defined(VK_USE_PLATFORM_IOS_MVK) ||    \
-     defined(VK_USE_PLATFORM_MACOS_MVK)) && \
-    defined(VK_KHR_portability_enumeration)
-  // SRS - When running on iOS/macOS with MoltenVK and
-  // VK_KHR_portability_enumeration is defined and supported by the instance,
-  // enable the extension and the flag
-  if (std::find(supportedInstanceExtensions.begin(),
-                supportedInstanceExtensions.end(),
-                VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME) !=
-      supportedInstanceExtensions.end()) {
-    instanceExtensions.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
-    instanceCreateInfo.flags = VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
-  }
-#endif
-
-  // Enable the debug utils extension if available (e.g. when debugging tools
-  // are present)
-  if (settings.validation || std::find(supportedInstanceExtensions.begin(),
-                                       supportedInstanceExtensions.end(),
-                                       VK_EXT_DEBUG_UTILS_EXTENSION_NAME) !=
-                                 supportedInstanceExtensions.end()) {
-    instanceExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-  }
-
-  if (instanceExtensions.size() > 0) {
-    instanceCreateInfo.enabledExtensionCount =
-        (uint32_t)instanceExtensions.size();
-    instanceCreateInfo.ppEnabledExtensionNames = instanceExtensions.data();
-  }
-
-  // The VK_LAYER_KHRONOS_validation contains all current validation
-  // functionality. Note that on Android this layer requires at least NDK r20
-  const char* validationLayerName = "VK_LAYER_KHRONOS_validation";
-  if (settings.validation) {
-    // Check if this layer is available at instance level
-    uint32_t instanceLayerCount;
-    vkEnumerateInstanceLayerProperties(&instanceLayerCount, nullptr);
-    std::vector<VkLayerProperties> instanceLayerProperties(instanceLayerCount);
-    vkEnumerateInstanceLayerProperties(&instanceLayerCount,
-                                       instanceLayerProperties.data());
-    bool validationLayerPresent = false;
-    for (VkLayerProperties layer : instanceLayerProperties) {
-      if (strcmp(layer.layerName, validationLayerName) == 0) {
-        validationLayerPresent = true;
-        break;
-      }
-    }
-    if (validationLayerPresent) {
-      instanceCreateInfo.ppEnabledLayerNames = &validationLayerName;
-      instanceCreateInfo.enabledLayerCount = 1;
-    } else {
-      std::cerr << "Validation layer VK_LAYER_KHRONOS_validation not present, "
-                   "validation is disabled";
-    }
-  }
-  VkResult result = vkCreateInstance(&instanceCreateInfo, nullptr, &instance);
-
-  // If the debug utils extension is present we set up debug functions, so
-  // samples an label objects for debugging
-  if (std::find(supportedInstanceExtensions.begin(),
-                supportedInstanceExtensions.end(),
-                VK_EXT_DEBUG_UTILS_EXTENSION_NAME) !=
-      supportedInstanceExtensions.end()) {
-    debugutils::Setup(instance);
-  }
-
-  return result;
-}
 
 bool VulkanApp::InitVulkan() {
   VkResult err;
 
-  // Vulkan instance
-  err = CreateInstance(settings.validation);
-  if (err) {
-    tools::ExitFatal(
-        "Could not create Vulkan instance : \n" + tools::ErrorString(err), err);
-    return false;
-  }
+  context_ = new VulkanContext();
 
 #if defined(VK_USE_PLATFORM_ANDROID_KHR)
   vks::android::loadVulkanFunctions(instance);
@@ -179,24 +24,22 @@ bool VulkanApp::InitVulkan() {
 
   // If requested, we enable the default validation layers for debugging
   if (settings.validation) {
-    debug::SetupDebugging(instance);
+    debug::SetupDebugging(context_->instance());
   }
 
   // Physical device
   uint32_t gpuCount = 0;
   // Get number of available physical devices
-  VK_CHECK_RESULT(vkEnumeratePhysicalDevices(instance, &gpuCount, nullptr));
+  VK_CHECK_RESULT(vkEnumeratePhysicalDevices(context_->instance(), &gpuCount, nullptr));
   if (gpuCount == 0) {
     tools::ExitFatal("No device with Vulkan support found", -1);
     return false;
   }
   // Enumerate devices
   std::vector<VkPhysicalDevice> physicalDevices(gpuCount);
-  err = vkEnumeratePhysicalDevices(instance, &gpuCount, physicalDevices.data());
+  err = vkEnumeratePhysicalDevices(context_->instance(), &gpuCount, physicalDevices.data());
   if (err) {
-    tools::ExitFatal(
-        "Could not enumerate physical devices : \n" + tools::ErrorString(err),
-        err);
+    tools::ExitFatal("Could not enumerate physical devices : \n" + tools::ErrorString(err), err);
     return false;
   }
 
@@ -225,14 +68,11 @@ bool VulkanApp::InitVulkan() {
     for (uint32_t i = 0; i < gpuCount; i++) {
       VkPhysicalDeviceProperties deviceProperties;
       vkGetPhysicalDeviceProperties(physicalDevices[i], &deviceProperties);
-      std::cout << "Device [" << i << "] : " << deviceProperties.deviceName
-                << std::endl;
-      std::cout << " Type: "
-                << tools::PhysicalDeviceTypeString(deviceProperties.deviceType)
-                << "\n";
+      std::cout << "Device [" << i << "] : " << deviceProperties.deviceName << std::endl;
+      std::cout << " Type: " << tools::PhysicalDeviceTypeString(deviceProperties.deviceType) << "\n";
       std::cout << " API: " << (deviceProperties.apiVersion >> 22) << "."
-                << ((deviceProperties.apiVersion >> 12) & 0x3ff) << "."
-                << (deviceProperties.apiVersion & 0xfff) << "\n";
+                << ((deviceProperties.apiVersion >> 12) & 0x3ff) << "." << (deviceProperties.apiVersion & 0xfff)
+                << "\n";
     }
   }
 #endif
@@ -258,46 +98,39 @@ bool VulkanApp::InitVulkan() {
   // extensions read from the physical device
   GetEnabledExtensions();
 
-  VkResult res = vulkanDevice->CreateLogicalDevice(
-      enabledFeatures, enabledDeviceExtensions, deviceCreatepNextChain);
+  VkResult res = vulkanDevice->CreateLogicalDevice(enabledFeatures, enabledDeviceExtensions, deviceCreatepNextChain);
   if (res != VK_SUCCESS) {
-    tools::ExitFatal(
-        "Could not create Vulkan device: \n" + tools::ErrorString(res), res);
+    tools::ExitFatal("Could not create Vulkan device: \n" + tools::ErrorString(res), res);
     return false;
   }
   device = vulkanDevice->logicalDevice_;
 
   // Get a graphics queue from the device
-  vkGetDeviceQueue(device, vulkanDevice->queueFamilyIndices_.graphics, 0,
-                   &queue);
+  vkGetDeviceQueue(device, vulkanDevice->queueFamilyIndices_.graphics, 0, &queue);
 
   // Find a suitable depth and/or stencil format
   VkBool32 validFormat{false};
   // Sample that make use of stencil will require a depth + stencil format, so
   // we select from a different list
   if (requiresStencil) {
-    validFormat =
-        tools::GetSupportedDepthStencilFormat(physicalDevice, &depthFormat);
+    validFormat = tools::GetSupportedDepthStencilFormat(physicalDevice, &depthFormat);
   } else {
     validFormat = tools::GetSupportedDepthFormat(physicalDevice, &depthFormat);
   }
   assert(validFormat);
 
-  swapChain.Connect(instance, physicalDevice, device);
+  swapChain.Connect(context_->instance(), physicalDevice, device);
 
   // Create synchronization objects
-  VkSemaphoreCreateInfo semaphoreCreateInfo =
-      initializers::SemaphoreCreateInfo();
+  VkSemaphoreCreateInfo semaphoreCreateInfo = initializers::SemaphoreCreateInfo();
   // Create a semaphore used to synchronize image presentation
   // Ensures that the image is displayed before we start submitting new commands
   // to the queue
-  VK_CHECK_RESULT(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr,
-                                    &semaphores.presentComplete));
+  VK_CHECK_RESULT(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &semaphores.presentComplete));
   // Create a semaphore used to synchronize command submission
   // Ensures that the image is not presented until all commands have been
   // submitted and executed
-  VK_CHECK_RESULT(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr,
-                                    &semaphores.renderComplete));
+  VK_CHECK_RESULT(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &semaphores.renderComplete));
 
   // Set up submit info structure
   // Semaphores will stay the same during application lifetime
@@ -324,19 +157,15 @@ void VulkanApp::CreateCommandBuffers() {
   // Create one command buffer for each swap chain image and reuse for rendering
   drawCmdBuffers.resize(swapChain.imageCount());
 
-  VkCommandBufferAllocateInfo cmdBufAllocateInfo =
-      initializers::CommandBufferAllocateInfo(
-          cmdPool, VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-          static_cast<uint32_t>(drawCmdBuffers.size()));
+  VkCommandBufferAllocateInfo cmdBufAllocateInfo = initializers::CommandBufferAllocateInfo(
+      cmdPool, VK_COMMAND_BUFFER_LEVEL_PRIMARY, static_cast<uint32_t>(drawCmdBuffers.size()));
 
-  VK_CHECK_RESULT(vkAllocateCommandBuffers(device, &cmdBufAllocateInfo,
-                                           drawCmdBuffers.data()));
+  VK_CHECK_RESULT(vkAllocateCommandBuffers(device, &cmdBufAllocateInfo, drawCmdBuffers.data()));
 }
 
 void VulkanApp::CreateSynchronizationPrimitives() {
   // Wait fences to sync command buffer access
-  VkFenceCreateInfo fenceCreateInfo =
-      initializers::FenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
+  VkFenceCreateInfo fenceCreateInfo = initializers::FenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
   waitFences.resize(drawCmdBuffers.size());
   for (auto& fence : waitFences) {
     VK_CHECK_RESULT(vkCreateFence(device, &fenceCreateInfo, nullptr, &fence));
@@ -355,20 +184,16 @@ void VulkanApp::SetupDepthStencil() {
   imageCI.tiling = VK_IMAGE_TILING_OPTIMAL;
   imageCI.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
 
-  VK_CHECK_RESULT(
-      vkCreateImage(device, &imageCI, nullptr, &depthStencil.image));
+  VK_CHECK_RESULT(vkCreateImage(device, &imageCI, nullptr, &depthStencil.image));
   VkMemoryRequirements memReqs{};
   vkGetImageMemoryRequirements(device, depthStencil.image, &memReqs);
 
   VkMemoryAllocateInfo memAllloc{};
   memAllloc.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
   memAllloc.allocationSize = memReqs.size;
-  memAllloc.memoryTypeIndex = vulkanDevice->GetMemoryType(
-      memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-  VK_CHECK_RESULT(
-      vkAllocateMemory(device, &memAllloc, nullptr, &depthStencil.mem));
-  VK_CHECK_RESULT(
-      vkBindImageMemory(device, depthStencil.image, depthStencil.mem, 0));
+  memAllloc.memoryTypeIndex = vulkanDevice->GetMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+  VK_CHECK_RESULT(vkAllocateMemory(device, &memAllloc, nullptr, &depthStencil.mem));
+  VK_CHECK_RESULT(vkBindImageMemory(device, depthStencil.image, depthStencil.mem, 0));
 
   VkImageViewCreateInfo imageViewCI{};
   imageViewCI.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -385,8 +210,7 @@ void VulkanApp::SetupDepthStencil() {
   if (depthFormat >= VK_FORMAT_D16_UNORM_S8_UINT) {
     imageViewCI.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
   }
-  VK_CHECK_RESULT(
-      vkCreateImageView(device, &imageViewCI, nullptr, &depthStencil.view));
+  VK_CHECK_RESULT(vkCreateImageView(device, &imageViewCI, nullptr, &depthStencil.view));
 }
 
 void VulkanApp::SetupRenderPass() {
@@ -434,13 +258,11 @@ void VulkanApp::SetupRenderPass() {
 
   dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
   dependencies[0].dstSubpass = 0;
-  dependencies[0].srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
-                                 VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-  dependencies[0].dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
-                                 VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+  dependencies[0].srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+  dependencies[0].dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
   dependencies[0].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-  dependencies[0].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT |
-                                  VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+  dependencies[0].dstAccessMask =
+      VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
   dependencies[0].dependencyFlags = 0;
 
   dependencies[1].srcSubpass = VK_SUBPASS_EXTERNAL;
@@ -448,8 +270,7 @@ void VulkanApp::SetupRenderPass() {
   dependencies[1].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
   dependencies[1].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
   dependencies[1].srcAccessMask = 0;
-  dependencies[1].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
-                                  VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+  dependencies[1].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
   dependencies[1].dependencyFlags = 0;
 
   VkRenderPassCreateInfo renderPassInfo = {};
@@ -461,15 +282,13 @@ void VulkanApp::SetupRenderPass() {
   renderPassInfo.dependencyCount = static_cast<uint32_t>(dependencies.size());
   renderPassInfo.pDependencies = dependencies.data();
 
-  VK_CHECK_RESULT(
-      vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass));
+  VK_CHECK_RESULT(vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass));
 }
 
 void VulkanApp::CreatePipelineCache() {
   VkPipelineCacheCreateInfo pipelineCacheCreateInfo = {};
   pipelineCacheCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
-  VK_CHECK_RESULT(vkCreatePipelineCache(device, &pipelineCacheCreateInfo,
-                                        nullptr, &pipelineCache));
+  VK_CHECK_RESULT(vkCreatePipelineCache(device, &pipelineCacheCreateInfo, nullptr, &pipelineCache));
 }
 
 void VulkanApp::SetupFrameBuffer() {
@@ -492,8 +311,7 @@ void VulkanApp::SetupFrameBuffer() {
   frameBuffers.resize(swapChain.imageCount_);
   for (uint32_t i = 0; i < frameBuffers.size(); i++) {
     attachments[0] = swapChain.buffers_[i].view;
-    VK_CHECK_RESULT(vkCreateFramebuffer(device, &frameBufferCreateInfo, nullptr,
-                                        &frameBuffers[i]));
+    VK_CHECK_RESULT(vkCreateFramebuffer(device, &frameBufferCreateInfo, nullptr, &frameBuffers[i]));
   }
 }
 
@@ -510,9 +328,7 @@ void VulkanApp::NextFrame() {
   frameCounter++;
 #if 0
   auto tEnd = std::chrono::high_resolution_clock::now();
-#if (defined(VK_USE_PLATFORM_IOS_MVK) ||    \
-     (defined(VK_USE_PLATFORM_MACOS_MVK) && \
-      !defined(VK_EXAMPLE_XCODE_GENERATED)))
+#if (defined(VK_USE_PLATFORM_IOS_MVK) || (defined(VK_USE_PLATFORM_MACOS_MVK) && !defined(VK_EXAMPLE_XCODE_GENERATED)))
   // SRS - Calculate tDiff as time between frames vs. rendering time for
   // iOS/macOS displayLink-driven examples project
   auto tDiff =
@@ -609,14 +425,12 @@ void VulkanApp::RenderLoop() {
 
 std::string VulkanApp::GetShadersPath() const { return ""; }
 
-VkPipelineShaderStageCreateInfo VulkanApp::LoadShader(
-    std::string fileName, VkShaderStageFlagBits stage) {
+VkPipelineShaderStageCreateInfo VulkanApp::LoadShader(std::string fileName, VkShaderStageFlagBits stage) {
   VkPipelineShaderStageCreateInfo shaderStage = {};
   shaderStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
   shaderStage.stage = stage;
 #if defined(VK_USE_PLATFORM_ANDROID_KHR)
-  shaderStage.module = vks::tools::loadShader(
-      androidApp->activity->assetManager, fileName.c_str(), device);
+  shaderStage.module = vks::tools::loadShader(androidApp->activity->assetManager, fileName.c_str(), device);
 #else
   shaderStage.module = tools::LoadShader(fileName.c_str(), device);
 #endif
@@ -628,8 +442,7 @@ VkPipelineShaderStageCreateInfo VulkanApp::LoadShader(
 
 void VulkanApp::PrepareFrame() {
   // Acquire the next image from the swap chain
-  VkResult result =
-      swapChain.AcquireNextImage(semaphores.presentComplete, &currentBuffer);
+  VkResult result = swapChain.AcquireNextImage(semaphores.presentComplete, &currentBuffer);
   // Recreate the swapchain if it's no longer compatible with the surface
   // (OUT_OF_DATE) SRS - If no longer optimal (VK_SUBOPTIMAL_KHR), wait until
   // submitFrame() in case number of swapchain images will change on resize
@@ -644,8 +457,7 @@ void VulkanApp::PrepareFrame() {
 }
 
 void VulkanApp::SubmitFrame() {
-  VkResult result =
-      swapChain.QueuePresent(queue, currentBuffer, semaphores.renderComplete);
+  VkResult result = swapChain.QueuePresent(queue, currentBuffer, semaphores.renderComplete);
   // Recreate the swapchain if it's no longer compatible with the surface
   // (OUT_OF_DATE) or no longer optimal for presentation (SUBOPTIMAL)
   if ((result == VK_ERROR_OUT_OF_DATE_KHR) || (result == VK_SUBOPTIMAL_KHR)) {
@@ -687,13 +499,9 @@ void VulkanApp::Prepare() {
 #endif
 }
 
-void VulkanApp::InitSwapchain() {
-  swapChain.InitSurface(windowInstance, window);
-}
+void VulkanApp::InitSwapchain() { swapChain.InitSurface(windowInstance, window); }
 
-void VulkanApp::SetupSwapchain() {
-  swapChain.Create(&width, &height, settings.vsync, settings.fullscreen);
-}
+void VulkanApp::SetupSwapchain() { swapChain.Create(&width, &height, settings.vsync, settings.fullscreen); }
 
 std::string VulkanApp::GetWindowTitle() {
   std::string device(deviceProperties.deviceName);
@@ -705,8 +513,7 @@ std::string VulkanApp::GetWindowTitle() {
   return windowTitle;
 }
 
-void VulkanApp::HandleMessages(HWND hWnd, UINT uMsg, WPARAM wParam,
-                               LPARAM lParam) {
+void VulkanApp::HandleMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
   switch (uMsg) {
     case WM_CLOSE:
       prepared = false;
@@ -855,8 +662,7 @@ HWND VulkanApp::SetupWindow(HINSTANCE hinstance, WNDPROC wndproc) {
   int screenHeight = GetSystemMetrics(SM_CYSCREEN);
 
   if (settings.fullscreen) {
-    if ((width != (uint32_t)screenWidth) &&
-        (height != (uint32_t)screenHeight)) {
+    if ((width != (uint32_t)screenWidth) && (height != (uint32_t)screenHeight)) {
       DEVMODE dmScreenSettings;
       memset(&dmScreenSettings, 0, sizeof(dmScreenSettings));
       dmScreenSettings.dmSize = sizeof(dmScreenSettings);
@@ -864,11 +670,9 @@ HWND VulkanApp::SetupWindow(HINSTANCE hinstance, WNDPROC wndproc) {
       dmScreenSettings.dmPelsHeight = height;
       dmScreenSettings.dmBitsPerPel = 32;
       dmScreenSettings.dmFields = DM_BITSPERPEL | DM_PELSWIDTH | DM_PELSHEIGHT;
-      if (ChangeDisplaySettings(&dmScreenSettings, CDS_FULLSCREEN) !=
-          DISP_CHANGE_SUCCESSFUL) {
-        if (MessageBox(
-                NULL, "Fullscreen Mode not supported!\n Switch to window mode?",
-                "Error", MB_YESNO | MB_ICONEXCLAMATION) == IDYES) {
+      if (ChangeDisplaySettings(&dmScreenSettings, CDS_FULLSCREEN) != DISP_CHANGE_SUCCESSFUL) {
+        if (MessageBox(NULL, "Fullscreen Mode not supported!\n Switch to window mode?", "Error",
+                       MB_YESNO | MB_ICONEXCLAMATION) == IDYES) {
           settings.fullscreen = false;
         } else {
           return nullptr;
@@ -899,11 +703,9 @@ HWND VulkanApp::SetupWindow(HINSTANCE hinstance, WNDPROC wndproc) {
   AdjustWindowRectEx(&windowRect, dwStyle, FALSE, dwExStyle);
 
   std::string windowTitle = GetWindowTitle();
-  window = CreateWindowEx(0, name.c_str(), windowTitle.c_str(),
-                          dwStyle | WS_CLIPSIBLINGS | WS_CLIPCHILDREN, 0, 0,
-                          windowRect.right - windowRect.left,
-                          windowRect.bottom - windowRect.top, NULL, NULL,
-                          hinstance, NULL);
+  window = CreateWindowEx(0, name.c_str(), windowTitle.c_str(), dwStyle | WS_CLIPSIBLINGS | WS_CLIPCHILDREN, 0, 0,
+                          windowRect.right - windowRect.left, windowRect.bottom - windowRect.top, NULL, NULL, hinstance,
+                          NULL);
 
   if (!settings.fullscreen) {
     // Center on screen

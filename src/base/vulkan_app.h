@@ -10,9 +10,11 @@
 
 namespace lvk {
 class VulkanDevice;
+class VulkanContext;
 class VulkanApp {
  protected:
-  VkInstance instance;
+  // VkInstance instance;
+  VulkanContext *context_{nullptr};
 
   struct Settings {
     /** @brief Activates validation layers (and message output) when set to true
@@ -97,8 +99,6 @@ class VulkanApp {
   uint32_t frameCounter = 0;
 
   CommandLineParser commandLineParser;
-
-  VkResult CreateInstance(bool enableValidation);
 
   void InitSwapchain();
   void SetupSwapchain();

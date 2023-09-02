@@ -1,10 +1,16 @@
 #include "vulkan_context.h"
-#include <vector>
+
 #include <iostream>
+#include <vector>
 
 #include "vulkan_debug.h"
+#include "vulkan_tools.h"
 
 namespace lvk {
+
+VulkanContext::VulkanContext() { VK_CHECK_RESULT(CreateInstance(true)); }
+
+VulkanContext::~VulkanContext() {}
 
 VkResult VulkanContext::CreateInstance(bool enableValidation) {
   // this->settings.validation = enableValidation;
@@ -48,8 +54,7 @@ VkResult VulkanContext::CreateInstance(bool enableValidation) {
   vkEnumerateInstanceExtensionProperties(nullptr, &extCount, nullptr);
   if (extCount > 0) {
     std::vector<VkExtensionProperties> extensions(extCount);
-    if (vkEnumerateInstanceExtensionProperties(
-            nullptr, &extCount, &extensions.front()) == VK_SUCCESS) {
+    if (vkEnumerateInstanceExtensionProperties(nullptr, &extCount, &extensions.front()) == VK_SUCCESS) {
       for (VkExtensionProperties extension : extensions) {
         supportedInstanceExtensions.push_back(extension.extensionName);
       }
@@ -60,12 +65,9 @@ VkResult VulkanContext::CreateInstance(bool enableValidation) {
   // SRS - When running on iOS/macOS with MoltenVK, enable
   // VK_KHR_get_physical_device_properties2 if not already enabled by the
   // example (required by VK_KHR_portability_subset)
-  if (std::find(enabledInstanceExtensions.begin(),
-                enabledInstanceExtensions.end(),
-                VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME) ==
-      enabledInstanceExtensions.end()) {
-    enabledInstanceExtensions.push_back(
-        VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
+  if (std::find(enabledInstanceExtensions.begin(), enabledInstanceExtensions.end(),
+                VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME) == enabledInstanceExtensions.end()) {
+    enabledInstanceExtensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
   }
 #endif
 
@@ -73,11 +75,9 @@ VkResult VulkanContext::CreateInstance(bool enableValidation) {
   if (enabledInstanceExtensions.size() > 0) {
     for (const char* enabledExtension : enabledInstanceExtensions) {
       // Output message if requested extension is not available
-      if (std::find(supportedInstanceExtensions.begin(),
-                    supportedInstanceExtensions.end(),
-                    enabledExtension) == supportedInstanceExtensions.end()) {
-        std::cerr << "Enabled instance extension \"" << enabledExtension
-                  << "\" is not present at instance level\n";
+      if (std::find(supportedInstanceExtensions.begin(), supportedInstanceExtensions.end(), enabledExtension) ==
+          supportedInstanceExtensions.end()) {
+        std::cerr << "Enabled instance extension \"" << enabledExtension << "\" is not present at instance level\n";
       }
       instanceExtensions.push_back(enabledExtension);
     }
@@ -88,16 +88,12 @@ VkResult VulkanContext::CreateInstance(bool enableValidation) {
   instanceCreateInfo.pNext = NULL;
   instanceCreateInfo.pApplicationInfo = &appInfo;
 
-#if (defined(VK_USE_PLATFORM_IOS_MVK) ||    \
-     defined(VK_USE_PLATFORM_MACOS_MVK)) && \
-    defined(VK_KHR_portability_enumeration)
+#if (defined(VK_USE_PLATFORM_IOS_MVK) || defined(VK_USE_PLATFORM_MACOS_MVK)) && defined(VK_KHR_portability_enumeration)
   // SRS - When running on iOS/macOS with MoltenVK and
   // VK_KHR_portability_enumeration is defined and supported by the instance,
   // enable the extension and the flag
-  if (std::find(supportedInstanceExtensions.begin(),
-                supportedInstanceExtensions.end(),
-                VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME) !=
-      supportedInstanceExtensions.end()) {
+  if (std::find(supportedInstanceExtensions.begin(), supportedInstanceExtensions.end(),
+                VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME) != supportedInstanceExtensions.end()) {
     instanceExtensions.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
     instanceCreateInfo.flags = VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
   }
@@ -105,16 +101,13 @@ VkResult VulkanContext::CreateInstance(bool enableValidation) {
 
   // Enable the debug utils extension if available (e.g. when debugging tools
   // are present)
-  if (enableValidation || std::find(supportedInstanceExtensions.begin(),
-                                       supportedInstanceExtensions.end(),
-                                       VK_EXT_DEBUG_UTILS_EXTENSION_NAME) !=
-                                 supportedInstanceExtensions.end()) {
+  if (enableValidation || std::find(supportedInstanceExtensions.begin(), supportedInstanceExtensions.end(),
+                                    VK_EXT_DEBUG_UTILS_EXTENSION_NAME) != supportedInstanceExtensions.end()) {
     instanceExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
   }
 
   if (instanceExtensions.size() > 0) {
-    instanceCreateInfo.enabledExtensionCount =
-        (uint32_t)instanceExtensions.size();
+    instanceCreateInfo.enabledExtensionCount = (uint32_t)instanceExtensions.size();
     instanceCreateInfo.ppEnabledExtensionNames = instanceExtensions.data();
   }
 
@@ -126,8 +119,7 @@ VkResult VulkanContext::CreateInstance(bool enableValidation) {
     uint32_t instanceLayerCount;
     vkEnumerateInstanceLayerProperties(&instanceLayerCount, nullptr);
     std::vector<VkLayerProperties> instanceLayerProperties(instanceLayerCount);
-    vkEnumerateInstanceLayerProperties(&instanceLayerCount,
-                                       instanceLayerProperties.data());
+    vkEnumerateInstanceLayerProperties(&instanceLayerCount, instanceLayerProperties.data());
     bool validationLayerPresent = false;
     for (VkLayerProperties layer : instanceLayerProperties) {
       if (strcmp(layer.layerName, validationLayerName) == 0) {
@@ -143,18 +135,16 @@ VkResult VulkanContext::CreateInstance(bool enableValidation) {
                    "validation is disabled";
     }
   }
-  VkResult result = vkCreateInstance(&instanceCreateInfo, nullptr, &instance);
+  VkResult result = vkCreateInstance(&instanceCreateInfo, nullptr, &instance_);
 
   // If the debug utils extension is present we set up debug functions, so
   // samples an label objects for debugging
-  if (std::find(supportedInstanceExtensions.begin(),
-                supportedInstanceExtensions.end(),
-                VK_EXT_DEBUG_UTILS_EXTENSION_NAME) !=
-      supportedInstanceExtensions.end()) {
-    debugutils::Setup(instance);
+  if (std::find(supportedInstanceExtensions.begin(), supportedInstanceExtensions.end(),
+                VK_EXT_DEBUG_UTILS_EXTENSION_NAME) != supportedInstanceExtensions.end()) {
+    debugutils::Setup(instance_);
   }
 
   return result;
 }
 
-}
+}  // namespace lvk
