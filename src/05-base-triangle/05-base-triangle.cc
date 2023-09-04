@@ -1,13 +1,14 @@
 #include <array>
 #include <iostream>
 
+#include "base/vertex_data.h"
 #include "base/vulkan_app.h"
 #include "base/vulkan_buffer.h"
 #include "base/vulkan_device.h"
 #include "base/vulkan_initializers.h"
 #include "base/vulkan_pipelinebuilder.h"
-#include "base/vulkan_tools.h"
 #include "base/vulkan_texture.h"
+#include "base/vulkan_tools.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -23,11 +24,13 @@ namespace lvk {
 using lvk::VulkanApp;
 
 // Vertex layout for this example
+#if 0
 struct Vertex {
   float pos[3];
   float uv[2];
   float normal[3];
 };
+#endif
 
 class TriangleApp : public VulkanApp {
  private:
@@ -58,7 +61,7 @@ class TriangleApp : public VulkanApp {
 
   lvk::VulkanBuffer vertexBuffer;
   lvk::VulkanBuffer indexBuffer;
-  uint32_t indexCount;
+  // uint32_t indexCount;
 
   VkClearColorValue defaultClearColor = {{0.025f, 0.025f, 0.025f, 1.0f}};
 
@@ -80,46 +83,38 @@ class TriangleApp : public VulkanApp {
 };
 
 void TriangleApp::GenerateQuad() {
-  // Setup vertices for a single uv-mapped quad made from two triangles
-  std::vector<Vertex> vertices = {{{1.0f, 1.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 0.0f, 1.0f}},
-                                  {{-1.0f, 1.0f, 0.0f}, {0.0f, 1.0f}, {0.0f, 0.0f, 1.0f}},
-                                  {{-1.0f, -1.0f, 0.0f}, {0.0f, 0.0f}, {0.0f, 0.0f, 1.0f}},
-                                  {{1.0f, -1.0f, 0.0f}, {1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}}};
-
-  // Setup indices
-  std::vector<uint32_t> indices = {0, 1, 2, 2, 3, 0};
-  indexCount = static_cast<uint32_t>(indices.size());
-
   // Create buffers
   // For the sake of simplicity we won't stage the vertex data to the gpu memory
   // Vertex buffer
-  VK_CHECK_RESULT(vulkanDevice->CreateBuffer(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-                                             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                                             &vertexBuffer, vertices.size() * sizeof(Vertex), vertices.data()));
+  VK_CHECK_RESULT(vulkanDevice->CreateBuffer(
+      VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+      &vertexBuffer, QuadMesh::instance()->VertexSize(), QuadMesh::instance()->VertexData()));
+  // &vertexBuffer, vertices.size() * sizeof(Vertex), vertices.data()));
   // Index buffer
-  VK_CHECK_RESULT(vulkanDevice->CreateBuffer(VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-                                             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                                             &indexBuffer, indices.size() * sizeof(uint32_t), indices.data()));
+  VK_CHECK_RESULT(vulkanDevice->CreateBuffer(
+      VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+      &indexBuffer, QuadMesh::instance()->IndexSize(), QuadMesh::instance()->IndexData()));
+  // &indexBuffer, indices.size() * sizeof(uint32_t), indices.data()));
 }
 
 void TriangleApp::SetupVertexDescriptions() {
   // Binding description
   vertices.bindingDescriptions.resize(1);
   vertices.bindingDescriptions[0] = lvk::initializers::VertexInputBindingDescription(
-      VERTEX_BUFFER_BIND_ID, sizeof(Vertex), VK_VERTEX_INPUT_RATE_VERTEX);
+      VERTEX_BUFFER_BIND_ID, sizeof(VertexLayout), VK_VERTEX_INPUT_RATE_VERTEX);
 
   // Attribute descriptions
   // Describes memory layout and shader positions
   vertices.attributeDescriptions.resize(3);
   // Location 0 : Position
   vertices.attributeDescriptions[0] = lvk::initializers::VertexInputAttributeDescription(
-      VERTEX_BUFFER_BIND_ID, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, pos));
-  // Location 1 : Texture coordinates
-  vertices.attributeDescriptions[1] = lvk::initializers::VertexInputAttributeDescription(
-      VERTEX_BUFFER_BIND_ID, 1, VK_FORMAT_R32G32_SFLOAT, offsetof(Vertex, uv));
-  // Location 2 : Vertex normal
+      VERTEX_BUFFER_BIND_ID, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(VertexLayout, position));
+  // Location 1 : Vertex normal
   vertices.attributeDescriptions[2] = lvk::initializers::VertexInputAttributeDescription(
-      VERTEX_BUFFER_BIND_ID, 2, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, normal));
+      VERTEX_BUFFER_BIND_ID, 1, VK_FORMAT_R32G32B32_SFLOAT, offsetof(VertexLayout, normal));
+  // Location 2 : Texture coordinates
+  vertices.attributeDescriptions[1] = lvk::initializers::VertexInputAttributeDescription(
+      VERTEX_BUFFER_BIND_ID, 2, VK_FORMAT_R32G32_SFLOAT, offsetof(VertexLayout, uv));
 
   vertices.inputState = lvk::initializers::PipelineVertexInputStateCreateInfo();
   vertices.inputState.vertexBindingDescriptionCount = static_cast<uint32_t>(vertices.bindingDescriptions.size());
@@ -131,8 +126,8 @@ void TriangleApp::SetupVertexDescriptions() {
 void TriangleApp::UpdateUniformBuffers() {
   uboVS.projection = glm::perspective(glm::radians(45.0f), float(width / height), 0.1f, 10.0f);
 
-  auto view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-  uboVS.modelView = glm::rotate(glm::mat4(1.0f), glm::radians(0.0f), glm::vec3(0.0f, 0.0f, 1.0f)) * view;
+  auto view = glm::lookAt(glm::vec3(0.0f, 0.0f, 4.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+  uboVS.modelView = view * glm::rotate(glm::mat4(1.0f), glm::radians(0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
   // uboVS.viewPos = camera.viewPos;
   memcpy(uniformBufferVS.mapped(), &uboVS, sizeof(uboVS));
 }
@@ -269,10 +264,11 @@ void TriangleApp::BuildCommandBuffers() {
     vkCmdBindPipeline(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines.solid);
 
     VkDeviceSize offsets[1] = {0};
-    vkCmdBindVertexBuffers(drawCmdBuffers[i], VERTEX_BUFFER_BIND_ID, 1, &vertexBuffer.buffer_, offsets);
-    vkCmdBindIndexBuffer(drawCmdBuffers[i], indexBuffer.buffer_, 0, VK_INDEX_TYPE_UINT32);
+    auto vkvb = vertexBuffer.buffer();
+    vkCmdBindVertexBuffers(drawCmdBuffers[i], VERTEX_BUFFER_BIND_ID, 1, &vkvb, offsets);
+    vkCmdBindIndexBuffer(drawCmdBuffers[i], indexBuffer.buffer(), 0, VK_INDEX_TYPE_UINT32);
 
-    vkCmdDrawIndexed(drawCmdBuffers[i], indexCount, 1, 0, 0, 0);
+    vkCmdDrawIndexed(drawCmdBuffers[i], QuadMesh::instance()->IndexCount(), 1, 0, 0, 0);
 
     // drawUI(drawCmdBuffers[i]);
 
@@ -321,15 +317,21 @@ void TriangleApp::Render() {
 }
 }  // namespace lvk
 
-FILE *g_ic_file_cout_stream; FILE *g_ic_file_cin_stream;
+FILE *g_ic_file_cout_stream;
+FILE *g_ic_file_cin_stream;
 
 // Success: true , Failure: false
-bool InitConsole() 
-{
-    if (!AllocConsole()) { return false; }
-    if (freopen_s(&g_ic_file_cout_stream, "CONOUT$", "w", stdout) != 0) { return false; } // For std::cout 
-    if (freopen_s(&g_ic_file_cin_stream, "CONIN$", "w+", stdin) != 0) { return false; } // For std::cin
-    return true;
+bool InitConsole() {
+  if (!AllocConsole()) {
+    return false;
+  }
+  if (freopen_s(&g_ic_file_cout_stream, "CONOUT$", "w", stdout) != 0) {
+    return false;
+  }  // For std::cout
+  if (freopen_s(&g_ic_file_cin_stream, "CONIN$", "w+", stdin) != 0) {
+    return false;
+  }  // For std::cin
+  return true;
 }
 
 using lvk::TriangleApp;

@@ -246,7 +246,7 @@ VkResult VulkanDevice::CreateLogicalDevice(
 VkResult VulkanDevice::CreateBuffer(VkBufferUsageFlags usageFlags,
                                     VkMemoryPropertyFlags memoryPropertyFlags,
                                     VkDeviceSize size, VkBuffer *buffer,
-                                    VkDeviceMemory *memory, void *data) {
+                                    VkDeviceMemory *memory, const void *data) {
   // Create the buffer handle
   VkBufferCreateInfo bufferCreateInfo =
       initializers::BufferCreateInfo(usageFlags, size);
@@ -314,7 +314,7 @@ VkResult VulkanDevice::CreateBuffer(VkBufferUsageFlags usageFlags,
 VkResult VulkanDevice::CreateBuffer(VkBufferUsageFlags usageFlags,
                                     VkMemoryPropertyFlags memoryPropertyFlags,
                                     VulkanBuffer *buffer, VkDeviceSize size,
-                                    void *data) {
+                                    const void *data) {
   buffer->set_deivce(logicalDevice_);
 
   // Create the buffer handle

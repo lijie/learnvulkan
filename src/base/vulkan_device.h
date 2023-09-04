@@ -28,11 +28,11 @@ class VulkanDevice {
   VkResult CreateBuffer(VkBufferUsageFlags usageFlags,
                         VkMemoryPropertyFlags memoryPropertyFlags,
                         VkDeviceSize size, VkBuffer *buffer,
-                        VkDeviceMemory *memory, void *data = nullptr);
+                        VkDeviceMemory *memory, const void *data = nullptr);
   VkResult CreateBuffer(VkBufferUsageFlags usageFlags,
                         VkMemoryPropertyFlags memoryPropertyFlags,
                         VulkanBuffer *buffer, VkDeviceSize size,
-                        void *data = nullptr);
+                        const void *data = nullptr);
   void CopyBuffer(VulkanBuffer *src, VulkanBuffer *dst, VkQueue queue,
                   VkBufferCopy *copyRegion = nullptr);
 

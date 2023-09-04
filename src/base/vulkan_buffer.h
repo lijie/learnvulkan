@@ -24,9 +24,9 @@ class VulkanBuffer {
   void* mapped() { return mapped_; }
 
   VkDescriptorBufferInfo descriptor_;
-  VkBuffer buffer_{VK_NULL_HANDLE};
 
  private:
+  VkBuffer buffer_{VK_NULL_HANDLE};
   VkDevice device_;
   VkDeviceMemory memory_{VK_NULL_HANDLE};
   VkDeviceSize size_{0};
