@@ -24,7 +24,7 @@ add_compile_definitions(VK_USE_PLATFORM_WIN32_KHR)
 
 add_library(base
 	src/base/vulkan_device.cc src/base/vulkan_buffer.cc src/base/vulkan_initializers.cc src/base/vulkan_tools.cc src/base/vulkan_app.cc src/base/vulkan_debug.cc
-	src/base/vulkan_swapchain.cc src/base/vulkan_pipelinebuilder.cc src/base/vertex_data.cc src/base/vulkan_texture.cc
+	src/base/vulkan_swapchain.cc src/base/vulkan_pipelinebuilder.cc src/base/vertex_data.cc src/base/vulkan_texture.cc src/base/primitives.cc
 	src/base/vulkan_context.cc
 )
 target_include_directories(base PRIVATE ${CMAKE_SOURCE_DIR}/src/base)
@@ -40,7 +40,8 @@ if (true)
 	# SET_TARGET_PROPERTIES(assimp PROPERTIES IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/deps/assimp/lib/assimp-vc142-mtd.lib)
 
 	set(dep_libs glfw base Vulkan::Vulkan)
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /utf-8 /std:c++20")
+	#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /utf-8 /std:c++20")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20")
 else ()
   set(dep_libs ${dep_libs_common} ${dep_libs_linux})
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
@@ -68,4 +69,5 @@ add_vulkan_target(02-vertex-buffer)
 add_vulkan_target(03-uniform-buffer)
 add_vulkan_target(04-texture)
 add_win32_vulkan_target(05-base-triangle)
+add_win32_vulkan_target(06-depth-buffer)
 

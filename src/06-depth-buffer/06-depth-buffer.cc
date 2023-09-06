@@ -32,7 +32,7 @@ struct Vertex {
 };
 #endif
 
-class TriangleApp : public VulkanApp {
+class DepthBufferApp : public VulkanApp {
  private:
   VulkanTexture *texture_{nullptr};
 
@@ -71,11 +71,11 @@ class TriangleApp : public VulkanApp {
   virtual void Prepare() override;
 };
 
-void TriangleApp::GenerateQuad() {
+void DepthBufferApp::GenerateQuad() {
   QuadMesh::instance()->InitForRendering(vulkanDevice);
 }
 
-void TriangleApp::UpdateUniformBuffers() {
+void DepthBufferApp::UpdateUniformBuffers() {
   uboVS.projection = glm::perspective(glm::radians(45.0f), float(width / height), 0.1f, 10.0f);
 
   auto view = glm::lookAt(glm::vec3(0.0f, 0.0f, 4.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
@@ -85,7 +85,7 @@ void TriangleApp::UpdateUniformBuffers() {
 }
 
 // Prepare and initialize uniform buffer containing shader uniforms
-void TriangleApp::PrepareUniformBuffers() {
+void DepthBufferApp::PrepareUniformBuffers() {
   // Vertex shader uniform buffer block
   VK_CHECK_RESULT(vulkanDevice->CreateBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
                                              VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
@@ -95,7 +95,7 @@ void TriangleApp::PrepareUniformBuffers() {
   UpdateUniformBuffers();
 }
 
-void TriangleApp::SetupDescriptorSetLayout() {
+void DepthBufferApp::SetupDescriptorSetLayout() {
   std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
       // Binding 0 : Vertex shader uniform buffer
       lvk::initializers::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0),
@@ -114,7 +114,7 @@ void TriangleApp::SetupDescriptorSetLayout() {
   VK_CHECK_RESULT(vkCreatePipelineLayout(device, &pPipelineLayoutCreateInfo, nullptr, &pipelineLayout));
 }
 
-void TriangleApp::PreparePipelines() {
+void DepthBufferApp::PreparePipelines() {
   std::vector<VkPipelineColorBlendAttachmentState> colorBlendAttachmentStates;
   colorBlendAttachmentStates.push_back(initializers::PipelineColorBlendAttachmentState(0xf, VK_FALSE));
 
@@ -138,7 +138,7 @@ void TriangleApp::PreparePipelines() {
       .build(device, pipelineCache, pipelineLayout, renderPass, &pipelines.solid, "05-GraphicPipline");
 }
 
-void TriangleApp::SetupDescriptorPool() {
+void DepthBufferApp::SetupDescriptorPool() {
   // Example uses one ubo and one image sampler
   std::vector<VkDescriptorPoolSize> poolSizes = {
       initializers::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1),
@@ -150,7 +150,7 @@ void TriangleApp::SetupDescriptorPool() {
   VK_CHECK_RESULT(vkCreateDescriptorPool(device, &descriptorPoolInfo, nullptr, &descriptorPool));
 }
 
-void TriangleApp::SetupDescriptorSet() {
+void DepthBufferApp::SetupDescriptorSet() {
   VkDescriptorSetAllocateInfo allocInfo =
       initializers::DescriptorSetAllocateInfo(descriptorPool, &descriptorSetLayout, 1);
 
@@ -181,7 +181,7 @@ void TriangleApp::SetupDescriptorSet() {
                          NULL);
 }
 
-void TriangleApp::BuildCommandBuffers() {
+void DepthBufferApp::BuildCommandBuffers() {
   VkCommandBufferBeginInfo cmdBufInfo = initializers::CommandBufferBeginInfo();
 
   VkClearValue clearValues[2];
@@ -231,13 +231,13 @@ void TriangleApp::BuildCommandBuffers() {
   }
 }
 
-void TriangleApp::LoadTexture() {
-  texture_ = new VulkanTexture(vulkanDevice, "../assets/texture.jpg", queue);
+void DepthBufferApp::LoadTexture() {
+  texture_ = new VulkanTexture(vulkanDevice, "../../assets/texture.jpg", queue);
   texture_->LoadTexture();
   return;
 }
 
-void TriangleApp::Prepare() {
+void DepthBufferApp::Prepare() {
   VulkanApp::Prepare();
   LoadTexture();
   GenerateQuad();
@@ -250,7 +250,7 @@ void TriangleApp::Prepare() {
   prepared = true;
 }
 
-void TriangleApp::Draw() {
+void DepthBufferApp::Draw() {
   VulkanApp::PrepareFrame();
 
   // Command buffer to be submitted to the queue
@@ -263,7 +263,7 @@ void TriangleApp::Draw() {
   VulkanApp::SubmitFrame();
 }
 
-void TriangleApp::Render() {
+void DepthBufferApp::Render() {
   if (!prepared) return;
   Draw();
 }
@@ -286,7 +286,7 @@ bool InitConsole() {
   return true;
 }
 
-using lvk::TriangleApp;
+using lvk::DepthBufferApp;
 using lvk::VulkanApp;
 
 static VulkanApp *vulkanApp{nullptr};
@@ -302,7 +302,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int) {
   for (int32_t i = 0; i < __argc; i++) {
     VulkanApp::args.push_back(__argv[i]);
   };
-  vulkanApp = new TriangleApp();
+  vulkanApp = new DepthBufferApp();
   vulkanApp->InitVulkan();
   vulkanApp->SetupWindow(hInstance, WndProc);
   vulkanApp->Prepare();
