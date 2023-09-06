@@ -34,12 +34,6 @@ struct Vertex {
 
 class TriangleApp : public VulkanApp {
  private:
-  struct {
-    VkPipelineVertexInputStateCreateInfo inputState;
-    std::vector<VkVertexInputBindingDescription> bindingDescriptions;
-    std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
-  } vertices;
-
   VulkanTexture *texture_{nullptr};
 
   lvk::VulkanBuffer uniformBufferVS;
@@ -59,15 +53,10 @@ class TriangleApp : public VulkanApp {
   VkDescriptorSet descriptorSet;
   VkDescriptorSetLayout descriptorSetLayout;
 
-  lvk::VulkanBuffer vertexBuffer;
-  lvk::VulkanBuffer indexBuffer;
-  // uint32_t indexCount;
-
   VkClearColorValue defaultClearColor = {{0.025f, 0.025f, 0.025f, 1.0f}};
 
   void LoadTexture();
   void GenerateQuad();
-  void SetupVertexDescriptions();
   void PrepareUniformBuffers();
   void UpdateUniformBuffers();
   void SetupDescriptorSetLayout();
@@ -83,44 +72,7 @@ class TriangleApp : public VulkanApp {
 };
 
 void TriangleApp::GenerateQuad() {
-  // Create buffers
-  // For the sake of simplicity we won't stage the vertex data to the gpu memory
-  // Vertex buffer
-  VK_CHECK_RESULT(vulkanDevice->CreateBuffer(
-      VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-      &vertexBuffer, QuadMesh::instance()->VertexSize(), QuadMesh::instance()->VertexData()));
-  // &vertexBuffer, vertices.size() * sizeof(Vertex), vertices.data()));
-  // Index buffer
-  VK_CHECK_RESULT(vulkanDevice->CreateBuffer(
-      VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-      &indexBuffer, QuadMesh::instance()->IndexSize(), QuadMesh::instance()->IndexData()));
-  // &indexBuffer, indices.size() * sizeof(uint32_t), indices.data()));
-}
-
-void TriangleApp::SetupVertexDescriptions() {
-  // Binding description
-  vertices.bindingDescriptions.resize(1);
-  vertices.bindingDescriptions[0] = lvk::initializers::VertexInputBindingDescription(
-      VERTEX_BUFFER_BIND_ID, sizeof(VertexLayout), VK_VERTEX_INPUT_RATE_VERTEX);
-
-  // Attribute descriptions
-  // Describes memory layout and shader positions
-  vertices.attributeDescriptions.resize(3);
-  // Location 0 : Position
-  vertices.attributeDescriptions[0] = lvk::initializers::VertexInputAttributeDescription(
-      VERTEX_BUFFER_BIND_ID, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(VertexLayout, position));
-  // Location 1 : Vertex normal
-  vertices.attributeDescriptions[2] = lvk::initializers::VertexInputAttributeDescription(
-      VERTEX_BUFFER_BIND_ID, 1, VK_FORMAT_R32G32B32_SFLOAT, offsetof(VertexLayout, normal));
-  // Location 2 : Texture coordinates
-  vertices.attributeDescriptions[1] = lvk::initializers::VertexInputAttributeDescription(
-      VERTEX_BUFFER_BIND_ID, 2, VK_FORMAT_R32G32_SFLOAT, offsetof(VertexLayout, uv));
-
-  vertices.inputState = lvk::initializers::PipelineVertexInputStateCreateInfo();
-  vertices.inputState.vertexBindingDescriptionCount = static_cast<uint32_t>(vertices.bindingDescriptions.size());
-  vertices.inputState.pVertexBindingDescriptions = vertices.bindingDescriptions.data();
-  vertices.inputState.vertexAttributeDescriptionCount = static_cast<uint32_t>(vertices.attributeDescriptions.size());
-  vertices.inputState.pVertexAttributeDescriptions = vertices.attributeDescriptions.data();
+  QuadMesh::instance()->InitForRendering(vulkanDevice);
 }
 
 void TriangleApp::UpdateUniformBuffers() {
@@ -175,7 +127,7 @@ void TriangleApp::PreparePipelines() {
       .dynamicStates({VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR})
       .primitiveTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
       .polygonMode(VK_POLYGON_MODE_FILL)
-      .vertexInputState(vertices.inputState)
+      .vertexInputState(QuadMesh::instance()->GetVkPipelineVertexInputStateCreateInfo())
       .cullMode(VK_CULL_MODE_NONE)
       .frontFace(VK_FRONT_FACE_COUNTER_CLOCKWISE)
       .colorBlendAttachmentStates(colorBlendAttachmentStates)
@@ -264,9 +216,10 @@ void TriangleApp::BuildCommandBuffers() {
     vkCmdBindPipeline(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines.solid);
 
     VkDeviceSize offsets[1] = {0};
-    auto vkvb = vertexBuffer.buffer();
+    auto vkvb = QuadMesh::instance()->getVertexVkBuffer();
+    auto vkib = QuadMesh::instance()->getIndexVkBuffer();
     vkCmdBindVertexBuffers(drawCmdBuffers[i], VERTEX_BUFFER_BIND_ID, 1, &vkvb, offsets);
-    vkCmdBindIndexBuffer(drawCmdBuffers[i], indexBuffer.buffer(), 0, VK_INDEX_TYPE_UINT32);
+    vkCmdBindIndexBuffer(drawCmdBuffers[i], vkib, 0, VK_INDEX_TYPE_UINT32);
 
     vkCmdDrawIndexed(drawCmdBuffers[i], QuadMesh::instance()->IndexCount(), 1, 0, 0, 0);
 
@@ -288,7 +241,6 @@ void TriangleApp::Prepare() {
   VulkanApp::Prepare();
   LoadTexture();
   GenerateQuad();
-  SetupVertexDescriptions();
   PrepareUniformBuffers();
   SetupDescriptorSetLayout();
   PreparePipelines();

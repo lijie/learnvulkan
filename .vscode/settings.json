@@ -66,6 +66,7 @@
         "xtree": "cpp",
         "xutility": "cpp",
         "array": "cpp",
-        "fstream": "cpp"
+        "fstream": "cpp",
+        "forward_list": "cpp"
     }
 }

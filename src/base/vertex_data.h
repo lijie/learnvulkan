@@ -3,9 +3,11 @@
 #include <stdint.h>
 #include <vulkan/vulkan.h>
 
+#include <array>
 #include <vector>
 
 #include "glm/glm.hpp"
+#include "vulkan_buffer.h"
 
 namespace lvk {
 
@@ -19,40 +21,82 @@ struct VertexLayout {
   Vector2 uv;
 };
 
+class VulkanDevice;
+class VertexRawData {
+  friend class StaticMesh;
+
+ public:
+  VertexRawData(std::vector<VertexLayout>&& vertices, std::vector<uint32_t>&& indices) {
+    vertices_ = std::move(vertices);
+    indices_ = std::move(indices);
+  }
+  uint32_t VertexSize() const { return static_cast<uint32_t>(sizeof(VertexLayout) * vertices_.size()); }
+
+  const void* VertexData() const { return vertices_.data(); }
+
+  uint32_t IndexSize() const { return static_cast<uint32_t>(sizeof(uint32_t) * indices_.size()); }
+
+  const void* IndexData() const { return indices_.data(); }
+
+  uint32_t IndexCount() const { return static_cast<uint32_t>(indices_.size()); }
+
+  void SetupForRendering(VulkanDevice* device);
+  bool CreateBuffers(VulkanDevice* device);
+
+  void SetupVertexDescriptions();
+
+  VulkanBuffer* vertexBuffer() { return vertexBuffer_; }
+  VulkanBuffer* indexBuffer() { return indexBuffer_; }
+
+ private:
+  std::vector<VertexLayout> vertices_;
+  std::vector<uint32_t> indices_;
+  VulkanBuffer* vertexBuffer_{nullptr};
+  VulkanBuffer* indexBuffer_{nullptr};
+  std::array<VkVertexInputBindingDescription, 1> bindingDescriptions_;
+  std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions_;
+  VkPipelineVertexInputStateCreateInfo inputState_;
+};
+
+class QuadVertexRawData : public VertexRawData {
+ public:
+  QuadVertexRawData()
+      : VertexRawData({{{1.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
+                       {{-1.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
+                       {{-1.0f, -1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}},
+                       {{1.0f, -1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}}},
+                      {0, 1, 2, 2, 3, 0}) {}
+};
+
 class VulkanBuffer;
 
 class StaticMesh {
  public:
-  StaticMesh(std::vector<VertexLayout>&& vertices, std::vector<uint32_t>&& indices_) {
-    vertices_ = std::move(vertices);
-    indices_ = std::move(indices_);
+  StaticMesh(VertexRawData* rawData) : rawData_(rawData) {}
+
+  uint32_t VertexSize() const { return rawData_->VertexSize(); }
+
+  const void* VertexData() const { return rawData_->VertexData(); }
+
+  uint32_t IndexSize() const { return rawData_->IndexSize(); }
+
+  const void* IndexData() const { return rawData_->IndexData(); }
+
+  uint32_t IndexCount() const { return rawData_->IndexCount(); }
+
+  VulkanBuffer* vertexBuffer() { return rawData_->vertexBuffer_; }
+  VulkanBuffer* indexBuffer() { return rawData_->indexBuffer_; }
+  VkBuffer getVertexVkBuffer() { return vertexBuffer()->buffer(); }
+  VkBuffer getIndexVkBuffer() { return indexBuffer()->buffer(); }
+
+  const VkPipelineVertexInputStateCreateInfo& GetVkPipelineVertexInputStateCreateInfo() {
+    return rawData_->inputState_;
   }
 
-  uint32_t VertexSize() const {
-    return static_cast<uint32_t>(sizeof(VertexLayout) * vertices_.size());
-  }
-
-  const void* VertexData() const {
-    return vertices_.data();
-  }
-
-  uint32_t IndexSize() const {
-    return static_cast<uint32_t>(sizeof(uint32_t) *indices_.size());
-  }
-
-  const void* IndexData() const {
-    return indices_.data();
-  }
-
-  uint32_t IndexCount() const {
-    return static_cast<uint32_t>(indices_.size());
-  }
-
-  StaticMesh() {}
+  void InitForRendering(VulkanDevice* device) { rawData_->SetupForRendering(device); }
 
  protected:
-  std::vector<VertexLayout> vertices_;
-  std::vector<uint32_t> indices_;
+  VertexRawData* rawData_{nullptr};
 
   VulkanBuffer* vertexBuffer_{nullptr};
   VulkanBuffer* indexBuffer_{nullptr};
@@ -60,23 +104,7 @@ class StaticMesh {
 
 class QuadMesh : public StaticMesh {
  public:
-  QuadMesh() {
-    // Setup vertices for a single uv-mapped quad made from two triangles
-    vertices_ = {{{1.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
-                 {{-1.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
-                 {{-1.0f, -1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}},
-                 {{1.0f, -1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f}}};
-
-    // Setup indices
-    indices_ = {0, 1, 2, 2, 3, 0};
-
-    StaticMesh::StaticMesh();
-  }
-
-  static const StaticMesh *instance() { return &instance_; }
-
-private:
-  static QuadMesh instance_;
+  static StaticMesh* instance();
 };
 
 class VulkanContext;
