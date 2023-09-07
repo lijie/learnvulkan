@@ -3,14 +3,45 @@
 #include <iostream>
 #include <vector>
 
+#include "vertex_data.h"
 #include "vulkan_debug.h"
+#include "vulkan_initializers.h"
 #include "vulkan_tools.h"
+
+
+#define VERTEX_BUFFER_BIND_ID 0
 
 namespace lvk {
 
 VulkanContext::VulkanContext() { VK_CHECK_RESULT(CreateInstance(true)); }
 
 VulkanContext::~VulkanContext() {}
+
+const VkPipelineVertexInputStateCreateInfo& VulkanContext::BuildVertexInputState() {
+  vertexInputState_.bindingDescriptions[0] = lvk::initializers::VertexInputBindingDescription(
+      VERTEX_BUFFER_BIND_ID, sizeof(VertexLayout), VK_VERTEX_INPUT_RATE_VERTEX);
+
+  // Attribute descriptions
+  // Describes memory layout and shader positions
+  // Location 0 : Position
+  vertexInputState_.attributeDescriptions[0] = lvk::initializers::VertexInputAttributeDescription(
+      VERTEX_BUFFER_BIND_ID, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(VertexLayout, position));
+  // Location 1 : Vertex normal
+  vertexInputState_.attributeDescriptions[1] = lvk::initializers::VertexInputAttributeDescription(
+      VERTEX_BUFFER_BIND_ID, 1, VK_FORMAT_R32G32B32_SFLOAT, offsetof(VertexLayout, normal));
+  // Location 2 : Texture coordinates
+  vertexInputState_.attributeDescriptions[2] = lvk::initializers::VertexInputAttributeDescription(
+      VERTEX_BUFFER_BIND_ID, 2, VK_FORMAT_R32G32_SFLOAT, offsetof(VertexLayout, uv));
+
+  vertexInputState_.inputState = lvk::initializers::PipelineVertexInputStateCreateInfo();
+  vertexInputState_.inputState.vertexBindingDescriptionCount =
+      static_cast<uint32_t>(vertexInputState_.bindingDescriptions.size());
+  vertexInputState_.inputState.pVertexBindingDescriptions = vertexInputState_.bindingDescriptions.data();
+  vertexInputState_.inputState.vertexAttributeDescriptionCount =
+      static_cast<uint32_t>(vertexInputState_.attributeDescriptions.size());
+  vertexInputState_.inputState.pVertexAttributeDescriptions = vertexInputState_.attributeDescriptions.data();
+  return vertexInputState_.inputState;
+}
 
 VkResult VulkanContext::CreateInstance(bool enableValidation) {
   // this->settings.validation = enableValidation;

@@ -1,14 +1,17 @@
 #include <array>
 #include <iostream>
 
+#include "base/primitives.h"
 #include "base/vertex_data.h"
 #include "base/vulkan_app.h"
 #include "base/vulkan_buffer.h"
+#include "base/vulkan_context.h"
 #include "base/vulkan_device.h"
 #include "base/vulkan_initializers.h"
 #include "base/vulkan_pipelinebuilder.h"
 #include "base/vulkan_texture.h"
 #include "base/vulkan_tools.h"
+
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -55,6 +58,9 @@ class TriangleApp : public VulkanApp {
 
   VkClearColorValue defaultClearColor = {{0.025f, 0.025f, 0.025f, 1.0f}};
 
+  PrimitiveMesh mesh;
+  PrimitiveMeshVK vkmesh;
+
   void LoadTexture();
   void GenerateQuad();
   void PrepareUniformBuffers();
@@ -67,12 +73,14 @@ class TriangleApp : public VulkanApp {
   void Draw();
 
  public:
-  void Render();
+  virtual void Render() override;
   virtual void Prepare() override;
 };
 
 void TriangleApp::GenerateQuad() {
-  QuadMesh::instance()->InitForRendering(vulkanDevice);
+  // QuadMesh::instance()->InitForRendering(vulkanDevice);
+  mesh = primitive::quad();
+  vkmesh.CreateBuffer(&mesh, vulkanDevice);
 }
 
 void TriangleApp::UpdateUniformBuffers() {
@@ -127,7 +135,7 @@ void TriangleApp::PreparePipelines() {
       .dynamicStates({VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR})
       .primitiveTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
       .polygonMode(VK_POLYGON_MODE_FILL)
-      .vertexInputState(QuadMesh::instance()->GetVkPipelineVertexInputStateCreateInfo())
+      .vertexInputState(context_->BuildVertexInputState())
       .cullMode(VK_CULL_MODE_NONE)
       .frontFace(VK_FRONT_FACE_COUNTER_CLOCKWISE)
       .colorBlendAttachmentStates(colorBlendAttachmentStates)
@@ -216,12 +224,12 @@ void TriangleApp::BuildCommandBuffers() {
     vkCmdBindPipeline(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines.solid);
 
     VkDeviceSize offsets[1] = {0};
-    auto vkvb = QuadMesh::instance()->getVertexVkBuffer();
-    auto vkib = QuadMesh::instance()->getIndexVkBuffer();
+    auto vkvb = vkmesh.vertexBuffer->buffer();
+    auto vkib = vkmesh.indexBuffer->buffer();
     vkCmdBindVertexBuffers(drawCmdBuffers[i], VERTEX_BUFFER_BIND_ID, 1, &vkvb, offsets);
     vkCmdBindIndexBuffer(drawCmdBuffers[i], vkib, 0, VK_INDEX_TYPE_UINT32);
 
-    vkCmdDrawIndexed(drawCmdBuffers[i], QuadMesh::instance()->IndexCount(), 1, 0, 0, 0);
+    vkCmdDrawIndexed(drawCmdBuffers[i], mesh.indices.size(), 1, 0, 0, 0);
 
     // drawUI(drawCmdBuffers[i]);
 

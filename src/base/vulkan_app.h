@@ -132,5 +132,7 @@ class VulkanApp {
   // window
   void HandleMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
   HWND SetupWindow(HINSTANCE hinstance, WNDPROC wndproc);
+
+  virtual ~VulkanApp() {}
 };
 }  // namespace lvk

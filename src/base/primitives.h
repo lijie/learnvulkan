@@ -5,6 +5,7 @@
 #include "glm/ext/matrix_float4x4.hpp"
 #include "glm/ext/matrix_transform.hpp"
 #include "vertex_data.h"
+#include "vulkan_device.h"
 
 namespace lvk {
 
@@ -15,6 +16,18 @@ using mat4f = glm::mat4x4;
 struct PrimitiveMesh {
   std::vector<VertexLayout> vertices;
   std::vector<uint32_t> indices;
+};
+
+struct PrimitiveMeshVK {
+  VulkanBuffer* vertexBuffer{nullptr};
+  VulkanBuffer* indexBuffer{nullptr};
+  std::array<VkVertexInputBindingDescription, 1> bindingDescriptions;
+  std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions;
+  VkPipelineVertexInputStateCreateInfo inputState;
+
+  void CreateBuffer(PrimitiveMesh* mesh, VulkanDevice* device);
+
+  ~PrimitiveMeshVK();
 };
 
 // render node in scene
@@ -37,5 +50,11 @@ struct Node {
   }
 };
 
+namespace primitive_helpers {
+
+}
+
+namespace primitive {
 PrimitiveMesh quad();
+}
 }  // namespace lvk
