@@ -16,6 +16,8 @@ void PrimitiveMeshVK::CreateBuffer(PrimitiveMesh *mesh, VulkanDevice *device) {
   }
 
   if (indexBuffer == nullptr) {
+    indexBuffer = new VulkanBuffer();
+
     uint32_t isize = static_cast<uint32_t>(sizeof(VertexLayout) * mesh->indices.size());
     void *idata = mesh->indices.data();
     VK_CHECK_RESULT(device->CreateBuffer(VK_BUFFER_USAGE_INDEX_BUFFER_BIT,

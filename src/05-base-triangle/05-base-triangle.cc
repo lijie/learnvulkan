@@ -11,6 +11,7 @@
 #include "base/vulkan_pipelinebuilder.h"
 #include "base/vulkan_texture.h"
 #include "base/vulkan_tools.h"
+#include "base/scene.h"
 
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -58,8 +59,9 @@ class TriangleApp : public VulkanApp {
 
   VkClearColorValue defaultClearColor = {{0.025f, 0.025f, 0.025f, 1.0f}};
 
-  PrimitiveMesh mesh;
-  PrimitiveMeshVK vkmesh;
+  std::array<PrimitiveMesh, 1> meshList;
+  std::array<PrimitiveMeshVK, 1> vkmeshList;
+  Scene scene;
 
   void LoadTexture();
   void GenerateQuad();
@@ -79,8 +81,8 @@ class TriangleApp : public VulkanApp {
 
 void TriangleApp::GenerateQuad() {
   // QuadMesh::instance()->InitForRendering(vulkanDevice);
-  mesh = primitive::quad();
-  vkmesh.CreateBuffer(&mesh, vulkanDevice);
+  meshList[0] = primitive::quad();
+  vkmeshList[0].CreateBuffer(&meshList[0], vulkanDevice);
 }
 
 void TriangleApp::UpdateUniformBuffers() {
@@ -224,12 +226,12 @@ void TriangleApp::BuildCommandBuffers() {
     vkCmdBindPipeline(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines.solid);
 
     VkDeviceSize offsets[1] = {0};
-    auto vkvb = vkmesh.vertexBuffer->buffer();
-    auto vkib = vkmesh.indexBuffer->buffer();
+    auto vkvb = vkmeshList[0].vertexBuffer->buffer();
+    auto vkib = vkmeshList[0].indexBuffer->buffer();
     vkCmdBindVertexBuffers(drawCmdBuffers[i], VERTEX_BUFFER_BIND_ID, 1, &vkvb, offsets);
     vkCmdBindIndexBuffer(drawCmdBuffers[i], vkib, 0, VK_INDEX_TYPE_UINT32);
 
-    vkCmdDrawIndexed(drawCmdBuffers[i], mesh.indices.size(), 1, 0, 0, 0);
+    vkCmdDrawIndexed(drawCmdBuffers[i], meshList[0].indices.size(), 1, 0, 0, 0);
 
     // drawUI(drawCmdBuffers[i]);
 
