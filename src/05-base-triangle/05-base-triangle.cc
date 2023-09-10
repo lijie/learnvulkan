@@ -40,15 +40,6 @@ class TriangleApp : public VulkanApp {
  private:
   VulkanTexture *texture_{nullptr};
 
-  lvk::VulkanBuffer uniformBufferVS;
-
-  struct {
-    glm::mat4 projection;
-    glm::mat4 modelView;
-    glm::vec4 viewPos;
-    float lodBias = 0.0f;
-  } uboVS;
-
   struct {
     VkPipeline solid;
   } pipelines;
@@ -66,7 +57,6 @@ class TriangleApp : public VulkanApp {
   void LoadTexture();
   void GenerateQuad();
   void PrepareUniformBuffers();
-  void UpdateUniformBuffers();
   void SetupDescriptorSetLayout();
   void PreparePipelines();
   void SetupDescriptorPool();
@@ -83,26 +73,18 @@ void TriangleApp::GenerateQuad() {
   // QuadMesh::instance()->InitForRendering(vulkanDevice);
   meshList[0] = primitive::quad();
   vkmeshList[0].CreateBuffer(&meshList[0], vulkanDevice);
-}
 
-void TriangleApp::UpdateUniformBuffers() {
-  uboVS.projection = glm::perspective(glm::radians(45.0f), float(width / height), 0.1f, 10.0f);
-
-  auto view = glm::lookAt(glm::vec3(0.0f, 0.0f, 4.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-  uboVS.modelView = view * glm::rotate(glm::mat4(1.0f), glm::radians(0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-  // uboVS.viewPos = camera.viewPos;
-  memcpy(uniformBufferVS.mapped(), &uboVS, sizeof(uboVS));
+  Transform t{
+    .translation{0, 0, 0},
+    .rotation{0, 0, 0},
+    .scale{1, 1, 1},
+  };
+  scene.AddNode(0, 0, t);
 }
 
 // Prepare and initialize uniform buffer containing shader uniforms
 void TriangleApp::PrepareUniformBuffers() {
-  // Vertex shader uniform buffer block
-  VK_CHECK_RESULT(vulkanDevice->CreateBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                                             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                                             &uniformBufferVS, sizeof(uboVS), &uboVS));
-  VK_CHECK_RESULT(uniformBufferVS.Map());
-
-  UpdateUniformBuffers();
+  context_->PrepareUniformBuffers(&scene, vulkanDevice);
 }
 
 void TriangleApp::SetupDescriptorSetLayout() {
@@ -170,10 +152,12 @@ void TriangleApp::SetupDescriptorSet() {
   // combined image sampler
   VkDescriptorImageInfo textureDescriptor = texture_->GetDescriptorImageInfo();
 
+  auto descriptor = context_->CreateDescriptor2();
+
   std::vector<VkWriteDescriptorSet> writeDescriptorSets = {
       // Binding 0 : Vertex shader uniform buffer
-      initializers::WriteDescriptorSet(descriptorSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0,
-                                       &uniformBufferVS.descriptor_),
+      initializers::WriteDescriptorSet(descriptorSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &descriptor),
+                                       // &uniformBufferVS.descriptor_),
       // Binding 1 : Fragment shader texture sampler
       //	Fragment shader: layout (binding = 1) uniform sampler2D
       // samplerColor;

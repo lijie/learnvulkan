@@ -26,7 +26,7 @@ void VulkanBuffer::SetupDescriptor(VkDeviceSize size, VkDeviceSize offset) {
   descriptor_.range = size;
 }
 
-void VulkanBuffer::CopyTo(void* data, VkDeviceSize size) {
+void VulkanBuffer::CopyTo(const void* data, VkDeviceSize size) {
   assert(mapped_);
   memcpy(mapped_, data, size);
 }
@@ -47,6 +47,12 @@ VkResult VulkanBuffer::Invalidate(VkDeviceSize size, VkDeviceSize offset) {
   mappedRange.offset = offset;
   mappedRange.size = size;
   return vkInvalidateMappedMemoryRanges(device_, 1, &mappedRange);
+}
+
+void VulkanBuffer::Update(const uint8_t *data, const VkDeviceSize size, const VkDeviceSize offset) {
+  Map(size, offset);
+  CopyTo(data, size);
+  Unmap();
 }
 
 void VulkanBuffer::Destroy() {

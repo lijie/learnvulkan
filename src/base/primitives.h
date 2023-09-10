@@ -18,6 +18,7 @@ struct PrimitiveMesh {
   std::vector<uint32_t> indices;
 };
 
+// todo: move to vulkan context
 struct PrimitiveMeshVK {
   VulkanBuffer* vertexBuffer{nullptr};
   VulkanBuffer* indexBuffer{nullptr};
@@ -39,7 +40,7 @@ struct Transform {
 // render node in scene
 struct Node {
   Transform transform;
-  mat4f matrix;
+  mat4f matrix{1.0};
   int material{0};
   int mesh{-1};
 

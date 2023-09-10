@@ -13,12 +13,12 @@ class VulkanBuffer {
   VkResult Map(VkDeviceSize size = VK_WHOLE_SIZE, VkDeviceSize offset = 0);
   void Unmap();
   VkResult Bind(VkDeviceSize offset = 0);
-  void SetupDescriptor(VkDeviceSize size = VK_WHOLE_SIZE,
-                       VkDeviceSize offset = 0);
-  void CopyTo(void* data, VkDeviceSize size);
+  void SetupDescriptor(VkDeviceSize size = VK_WHOLE_SIZE, VkDeviceSize offset = 0);
+  void CopyTo(const void* data, VkDeviceSize size);
   VkResult Flush(VkDeviceSize size = VK_WHOLE_SIZE, VkDeviceSize offset = 0);
-  VkResult Invalidate(VkDeviceSize size = VK_WHOLE_SIZE,
-                      VkDeviceSize offset = 0);
+  VkResult Invalidate(VkDeviceSize size = VK_WHOLE_SIZE, VkDeviceSize offset = 0);
+
+  void Update(const uint8_t* data, const VkDeviceSize size, const VkDeviceSize offset = 0);
   void Destroy();
 
   void* mapped() { return mapped_; }

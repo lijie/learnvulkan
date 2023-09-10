@@ -1,13 +1,17 @@
 #include "vulkan_context.h"
 
+#include <corecrt_malloc.h>
+
 #include <iostream>
 #include <vector>
 
+#include "primitives.h"
+#include "scene.h"
 #include "vertex_data.h"
 #include "vulkan_debug.h"
+#include "vulkan_device.h"
 #include "vulkan_initializers.h"
 #include "vulkan_tools.h"
-
 
 #define VERTEX_BUFFER_BIND_ID 0
 
@@ -15,7 +19,100 @@ namespace lvk {
 
 VulkanContext::VulkanContext() { VK_CHECK_RESULT(CreateInstance(true)); }
 
-VulkanContext::~VulkanContext() {}
+VulkanContext::~VulkanContext() {
+  if (uniformBuffers_.model) {
+    free(uniformBuffers_.model);
+  }
+}
+
+void VulkanContext::PrepareUniformBuffers(Scene* scene, VulkanDevice* device) {
+  size_t bufferSize = scene->GetNodeCount() * sizeof(_UBOMesh);
+
+  VK_CHECK_RESULT(device->CreateBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                                       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                                       &uniformBuffers_.dynamic, bufferSize));
+
+  VK_CHECK_RESULT(device->CreateBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                                       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                                       &uniformBuffers_.view, sizeof(CameraMatrix)));
+
+  // save all model matrix
+  uniformBuffers_.model = reinterpret_cast<_UBOMesh*>(malloc(bufferSize));
+  uniformBuffers_.dynamicBufferSize = bufferSize;
+  uniformBuffers_.dynamicAlignment = sizeof(_UBOMesh);
+
+  UpdateUniformBuffers(scene);
+}
+
+void VulkanContext::UpdateUniformBuffers(Scene* scene) {
+  const auto& camera_matrix = scene->GetCameraMatrix();
+  // update model matrix
+  scene->ForEachNode([this, camera_matrix](Node* n, int idx) {
+    auto& ubo = uniformBuffers_.model[idx];
+    ubo.modelView = camera_matrix.view * n->localMatrix();
+    ubo.projection = camera_matrix.proj;
+  });
+
+  // update to gpu
+  uniformBuffers_.dynamic.Update(reinterpret_cast<const uint8_t*>(uniformBuffers_.model),
+                                 uniformBuffers_.dynamicBufferSize);
+}
+
+void VulkanContext::SetupDescriptorSetLayout(VulkanDevice* device) {
+  std::vector<VkDescriptorSetLayoutBinding> set_layout_bindings = {
+      initializers::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0),
+      initializers::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT,
+                                               1),
+      initializers::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT,
+                                               2)};
+
+  VkDescriptorSetLayoutCreateInfo descriptor_layout = initializers::DescriptorSetLayoutCreateInfo(
+      set_layout_bindings.data(), static_cast<uint32_t>(set_layout_bindings.size()));
+
+  VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device->device(), &descriptor_layout, nullptr, &descriptorSetLayout_));
+
+  VkPipelineLayoutCreateInfo pipeline_layout_create_info =
+      initializers::PipelineLayoutCreateInfo(&descriptorSetLayout_, 1);
+
+  VK_CHECK_RESULT(vkCreatePipelineLayout(device->device(), &pipeline_layout_create_info, nullptr, &pipelineLayout_));
+}
+
+void VulkanContext::SetupDescriptorPool(VulkanDevice* device) {
+  // Example uses one ubo and one image sampler
+  std::vector<VkDescriptorPoolSize> pool_sizes = {
+      initializers::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1),
+      initializers::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1),
+      initializers::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1)};
+
+  VkDescriptorPoolCreateInfo descriptor_pool_create_info =
+      initializers::DescriptorPoolCreateInfo(static_cast<uint32_t>(pool_sizes.size()), pool_sizes.data(), 2);
+
+  VK_CHECK_RESULT(vkCreateDescriptorPool(device->device(), &descriptor_pool_create_info, nullptr, &descriptorPool_));
+}
+
+void VulkanContext::SetupDescriptorSet(VulkanDevice* device) {
+  VkDescriptorSetAllocateInfo alloc_info =
+      initializers::DescriptorSetAllocateInfo(descriptorPool_, &descriptorSetLayout_, 1);
+
+  VK_CHECK_RESULT(vkAllocateDescriptorSets(device->device(), &alloc_info, &descriptorSet_));
+
+  VkDescriptorBufferInfo view_buffer_descriptor = CreateDescriptor(&uniformBuffers_.view);
+
+  // Pass the  actual dynamic alignment as the descriptor's size
+  VkDescriptorBufferInfo dynamic_buffer_descriptor =
+      CreateDescriptor(&uniformBuffers_.dynamic, uniformBuffers_.dynamicAlignment);
+
+  std::vector<VkWriteDescriptorSet> write_descriptor_sets = {
+      // Binding 0 : Projection/View matrix uniform buffer
+      initializers::WriteDescriptorSet(descriptorSet_, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &view_buffer_descriptor),
+      // Binding 1 : Instance matrix as dynamic uniform buffer
+      initializers::WriteDescriptorSet(descriptorSet_, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1,
+                                       &dynamic_buffer_descriptor),
+  };
+
+  vkUpdateDescriptorSets(device->device(), static_cast<uint32_t>(write_descriptor_sets.size()),
+                         write_descriptor_sets.data(), 0, NULL);
+}
 
 const VkPipelineVertexInputStateCreateInfo& VulkanContext::BuildVertexInputState() {
   vertexInputState_.bindingDescriptions[0] = lvk::initializers::VertexInputBindingDescription(
@@ -178,4 +275,11 @@ VkResult VulkanContext::CreateInstance(bool enableValidation) {
   return result;
 }
 
+VkDescriptorBufferInfo VulkanContext::CreateDescriptor(VulkanBuffer* buffer, VkDeviceSize size, VkDeviceSize offset) {
+  VkDescriptorBufferInfo descriptor{};
+  descriptor.buffer = buffer->buffer();
+  descriptor.range = size;
+  descriptor.offset = offset;
+  return descriptor;
+}
 }  // namespace lvk

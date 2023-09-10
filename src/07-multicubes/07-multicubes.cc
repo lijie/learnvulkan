@@ -36,7 +36,7 @@ struct Vertex {
 };
 #endif
 
-class DepthBufferApp : public VulkanApp {
+class MultiCubes : public VulkanApp {
  private:
   VulkanTexture *texture_{nullptr};
 
@@ -79,7 +79,7 @@ class DepthBufferApp : public VulkanApp {
   virtual void Prepare() override;
 };
 
-void DepthBufferApp::GenerateQuad() {
+void MultiCubes::GenerateQuad() {
   // QuadMesh::instance()->InitForRendering(vulkanDevice);
   meshList[0] = primitive::quad();
   vkmeshList[0].CreateBuffer(&meshList[0], vulkanDevice);
@@ -92,7 +92,7 @@ void DepthBufferApp::GenerateQuad() {
   scene.AddNode(0, 0, t);
 }
 
-void DepthBufferApp::UpdateUniformBuffers() {
+void MultiCubes::UpdateUniformBuffers() {
   uboVS.projection = glm::perspective(glm::radians(45.0f), float(width / height), 0.1f, 10.0f);
 
   auto view = glm::lookAt(glm::vec3(0.0f, 0.0f, 4.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
@@ -103,7 +103,7 @@ void DepthBufferApp::UpdateUniformBuffers() {
 }
 
 // Prepare and initialize uniform buffer containing shader uniforms
-void DepthBufferApp::PrepareUniformBuffers() {
+void MultiCubes::PrepareUniformBuffers() {
   // Vertex shader uniform buffer block
   VK_CHECK_RESULT(vulkanDevice->CreateBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
                                              VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
@@ -113,7 +113,7 @@ void DepthBufferApp::PrepareUniformBuffers() {
   UpdateUniformBuffers();
 }
 
-void DepthBufferApp::SetupDescriptorSetLayout() {
+void MultiCubes::SetupDescriptorSetLayout() {
   std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
       // Binding 0 : Vertex shader uniform buffer
       lvk::initializers::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0),
@@ -132,7 +132,7 @@ void DepthBufferApp::SetupDescriptorSetLayout() {
   VK_CHECK_RESULT(vkCreatePipelineLayout(device, &pPipelineLayoutCreateInfo, nullptr, &pipelineLayout));
 }
 
-void DepthBufferApp::PreparePipelines() {
+void MultiCubes::PreparePipelines() {
   std::vector<VkPipelineColorBlendAttachmentState> colorBlendAttachmentStates;
   colorBlendAttachmentStates.push_back(initializers::PipelineColorBlendAttachmentState(0xf, VK_FALSE));
 
@@ -156,7 +156,7 @@ void DepthBufferApp::PreparePipelines() {
       .build(device, pipelineCache, pipelineLayout, renderPass, &pipelines.solid, "05-GraphicPipline");
 }
 
-void DepthBufferApp::SetupDescriptorPool() {
+void MultiCubes::SetupDescriptorPool() {
   // Example uses one ubo and one image sampler
   std::vector<VkDescriptorPoolSize> poolSizes = {
       initializers::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1),
@@ -168,7 +168,7 @@ void DepthBufferApp::SetupDescriptorPool() {
   VK_CHECK_RESULT(vkCreateDescriptorPool(device, &descriptorPoolInfo, nullptr, &descriptorPool));
 }
 
-void DepthBufferApp::SetupDescriptorSet() {
+void MultiCubes::SetupDescriptorSet() {
   VkDescriptorSetAllocateInfo allocInfo =
       initializers::DescriptorSetAllocateInfo(descriptorPool, &descriptorSetLayout, 1);
 
@@ -199,7 +199,7 @@ void DepthBufferApp::SetupDescriptorSet() {
                          NULL);
 }
 
-void DepthBufferApp::BuildCommandBuffers() {
+void MultiCubes::BuildCommandBuffers() {
   VkCommandBufferBeginInfo cmdBufInfo = initializers::CommandBufferBeginInfo();
 
   VkClearValue clearValues[2];
@@ -249,13 +249,13 @@ void DepthBufferApp::BuildCommandBuffers() {
   }
 }
 
-void DepthBufferApp::LoadTexture() {
+void MultiCubes::LoadTexture() {
   texture_ = new VulkanTexture(vulkanDevice, "../assets/texture.jpg", queue);
   texture_->LoadTexture();
   return;
 }
 
-void DepthBufferApp::Prepare() {
+void MultiCubes::Prepare() {
   VulkanApp::Prepare();
   LoadTexture();
   GenerateQuad();
@@ -268,7 +268,7 @@ void DepthBufferApp::Prepare() {
   prepared = true;
 }
 
-void DepthBufferApp::Draw() {
+void MultiCubes::Draw() {
   VulkanApp::PrepareFrame();
 
   // Command buffer to be submitted to the queue
@@ -281,7 +281,7 @@ void DepthBufferApp::Draw() {
   VulkanApp::SubmitFrame();
 }
 
-void DepthBufferApp::Render() {
+void MultiCubes::Render() {
   if (!prepared) return;
   Draw();
 }
@@ -304,7 +304,7 @@ bool InitConsole() {
   return true;
 }
 
-using lvk::DepthBufferApp;
+using lvk::MultiCubes;
 using lvk::VulkanApp;
 
 static VulkanApp *vulkanApp{nullptr};
@@ -320,7 +320,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int) {
   for (int32_t i = 0; i < __argc; i++) {
     VulkanApp::args.push_back(__argv[i]);
   };
-  vulkanApp = new DepthBufferApp();
+  vulkanApp = new MultiCubes();
   vulkanApp->InitVulkan();
   vulkanApp->SetupWindow(hInstance, WndProc);
   vulkanApp->Prepare();
