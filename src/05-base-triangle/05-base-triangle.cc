@@ -27,15 +27,6 @@
 namespace lvk {
 using lvk::VulkanApp;
 
-// Vertex layout for this example
-#if 0
-struct Vertex {
-  float pos[3];
-  float uv[2];
-  float normal[3];
-};
-#endif
-
 class TriangleApp : public VulkanApp {
  private:
   VulkanTexture *texture_{nullptr};
@@ -56,10 +47,8 @@ class TriangleApp : public VulkanApp {
 
   void LoadTexture();
   void GenerateQuad();
-  void PrepareUniformBuffers();
   void SetupDescriptorSetLayout();
   void PreparePipelines();
-  void SetupDescriptorPool();
   void SetupDescriptorSet();
   void BuildCommandBuffers();
   void Draw();
@@ -82,11 +71,7 @@ void TriangleApp::GenerateQuad() {
   scene.AddNode(0, 0, t);
 }
 
-// Prepare and initialize uniform buffer containing shader uniforms
-void TriangleApp::PrepareUniformBuffers() {
-  context_->PrepareUniformBuffers(&scene, vulkanDevice);
-}
-
+#if 1
 void TriangleApp::SetupDescriptorSetLayout() {
   std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
       // Binding 0 : Vertex shader uniform buffer
@@ -105,6 +90,7 @@ void TriangleApp::SetupDescriptorSetLayout() {
 
   VK_CHECK_RESULT(vkCreatePipelineLayout(device, &pPipelineLayoutCreateInfo, nullptr, &pipelineLayout));
 }
+#endif
 
 void TriangleApp::PreparePipelines() {
   std::vector<VkPipelineColorBlendAttachmentState> colorBlendAttachmentStates;
@@ -130,21 +116,9 @@ void TriangleApp::PreparePipelines() {
       .build(device, pipelineCache, pipelineLayout, renderPass, &pipelines.solid, "05-GraphicPipline");
 }
 
-void TriangleApp::SetupDescriptorPool() {
-  // Example uses one ubo and one image sampler
-  std::vector<VkDescriptorPoolSize> poolSizes = {
-      initializers::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1),
-      initializers::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1)};
-
-  VkDescriptorPoolCreateInfo descriptorPoolInfo =
-      initializers::DescriptorPoolCreateInfo(static_cast<uint32_t>(poolSizes.size()), poolSizes.data(), 2);
-
-  VK_CHECK_RESULT(vkCreateDescriptorPool(device, &descriptorPoolInfo, nullptr, &descriptorPool));
-}
-
 void TriangleApp::SetupDescriptorSet() {
   VkDescriptorSetAllocateInfo allocInfo =
-      initializers::DescriptorSetAllocateInfo(descriptorPool, &descriptorSetLayout, 1);
+      initializers::DescriptorSetAllocateInfo(context_->DescriptorPool(), &descriptorSetLayout, 1);
 
   VK_CHECK_RESULT(vkAllocateDescriptorSets(device, &allocInfo, &descriptorSet));
 
@@ -235,10 +209,11 @@ void TriangleApp::Prepare() {
   VulkanApp::Prepare();
   LoadTexture();
   GenerateQuad();
-  PrepareUniformBuffers();
+  context_->PrepareUniformBuffers(&scene, vulkanDevice);
+  // context_->SetupDescriptorSetLayout(vulkanDevice);
   SetupDescriptorSetLayout();
   PreparePipelines();
-  SetupDescriptorPool();
+  context_->SetupDescriptorPool(vulkanDevice);
   SetupDescriptorSet();
   BuildCommandBuffers();
   prepared = true;

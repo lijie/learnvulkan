@@ -37,6 +37,10 @@ class VulkanContext {
     return CreateDescriptor(&uniformBuffers_.dynamic, uniformBuffers_.dynamicAlignment);
   }
 
+  VkDescriptorPool DescriptorPool() { return descriptorPool_; }
+  const VkDescriptorSetLayout *DescriptorSetLayout() { return &descriptorSetLayout_; }
+  VkPipelineLayout PipelineLayout() { return pipelineLayout_; }
+
  private:
   VkInstance instance_{VK_NULL_HANDLE};
   VkDescriptorPool descriptorPool_{VK_NULL_HANDLE};
