@@ -215,7 +215,7 @@ void VulkanTexture::LoadTexture() {
   if (device_->features().samplerAnisotropy) {
     // Use max. level of anisotropy for this example
     sampler.maxAnisotropy = device_->properties().limits.maxSamplerAnisotropy;
-    sampler.anisotropyEnable = VK_TRUE;
+    sampler.anisotropyEnable = VK_FALSE;
   } else {
     // The device does not support anisotropic filtering
     sampler.maxAnisotropy = 1.0;

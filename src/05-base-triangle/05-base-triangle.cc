@@ -1,3 +1,4 @@
+#include <vulkan/vulkan_core.h>
 #include <array>
 #include <iostream>
 
@@ -35,9 +36,9 @@ class TriangleApp : public VulkanApp {
     VkPipeline solid;
   } pipelines;
 
-  VkPipelineLayout pipelineLayout;
+  // VkPipelineLayout pipelineLayout;
   VkDescriptorSet descriptorSet;
-  VkDescriptorSetLayout descriptorSetLayout;
+  // VkDescriptorSetLayout descriptorSetLayout;
 
   VkClearColorValue defaultClearColor = {{0.025f, 0.025f, 0.025f, 1.0f}};
 
@@ -71,7 +72,7 @@ void TriangleApp::GenerateQuad() {
   scene.AddNode(0, 0, t);
 }
 
-#if 1
+#if 0
 void TriangleApp::SetupDescriptorSetLayout() {
   std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
       // Binding 0 : Vertex shader uniform buffer
@@ -113,12 +114,12 @@ void TriangleApp::PreparePipelines() {
       .depthCompareOp(VK_COMPARE_OP_LESS_OR_EQUAL)
       .rasterizationSamples(VK_SAMPLE_COUNT_1_BIT)
       .shaderStages(shaderStages)
-      .build(device, pipelineCache, pipelineLayout, renderPass, &pipelines.solid, "05-GraphicPipline");
+      .build(device, pipelineCache, context_->PipelineLayout(), renderPass, &pipelines.solid, "05-GraphicPipline");
 }
 
 void TriangleApp::SetupDescriptorSet() {
   VkDescriptorSetAllocateInfo allocInfo =
-      initializers::DescriptorSetAllocateInfo(context_->DescriptorPool(), &descriptorSetLayout, 1);
+      initializers::DescriptorSetAllocateInfo(context_->DescriptorPool(), context_->DescriptorSetLayout(), 1);
 
   VK_CHECK_RESULT(vkAllocateDescriptorSets(device, &allocInfo, &descriptorSet));
 
@@ -130,19 +131,21 @@ void TriangleApp::SetupDescriptorSet() {
 
   std::vector<VkWriteDescriptorSet> writeDescriptorSets = {
       // Binding 0 : Vertex shader uniform buffer
-      initializers::WriteDescriptorSet(descriptorSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &descriptor),
+      initializers::WriteDescriptorSet(descriptorSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1, &descriptor),
                                        // &uniformBufferVS.descriptor_),
       // Binding 1 : Fragment shader texture sampler
       //	Fragment shader: layout (binding = 1) uniform sampler2D
       // samplerColor;
+      #if 1
       initializers::WriteDescriptorSet(descriptorSet,
                                        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,  // The descriptor set will
                                                                                    // use a combined image
                                                                                    // sampler (sampler and
                                                                                    // image could be split)
-                                       1,                                          // Shader binding point 1
+                                       2,                                          // Shader binding point 1
                                        &textureDescriptor)  // Pointer to the descriptor image for our
                                                             // texture
+      #endif
   };
 
   vkUpdateDescriptorSets(device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0,
@@ -179,8 +182,9 @@ void TriangleApp::BuildCommandBuffers() {
     VkRect2D scissor = initializers::Rect2D(width, height, 0, 0);
     vkCmdSetScissor(drawCmdBuffers[i], 0, 1, &scissor);
 
-    vkCmdBindDescriptorSets(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSet, 0,
-                            NULL);
+    uint32_t dynamic_offset = 0;
+    vkCmdBindDescriptorSets(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, context_->PipelineLayout(), 0, 1, &descriptorSet, 1,
+                            &dynamic_offset);
     vkCmdBindPipeline(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines.solid);
 
     VkDeviceSize offsets[1] = {0};
@@ -210,8 +214,8 @@ void TriangleApp::Prepare() {
   LoadTexture();
   GenerateQuad();
   context_->PrepareUniformBuffers(&scene, vulkanDevice);
-  // context_->SetupDescriptorSetLayout(vulkanDevice);
-  SetupDescriptorSetLayout();
+  context_->SetupDescriptorSetLayout(vulkanDevice);
+  // SetupDescriptorSetLayout();
   PreparePipelines();
   context_->SetupDescriptorPool(vulkanDevice);
   SetupDescriptorSet();
@@ -246,13 +250,15 @@ bool InitConsole() {
   if (!AllocConsole()) {
     return false;
   }
-  if (freopen_s(&g_ic_file_cout_stream, "CONOUT$", "w", stdout) != 0) {
-    return false;
-  }  // For std::cout
-  if (freopen_s(&g_ic_file_cin_stream, "CONIN$", "w+", stdin) != 0) {
-    return false;
-  }  // For std::cin
-  return true;
+  // std::cout, std::clog, std::cerr, std::cin
+  FILE *fDummy;
+  freopen_s(&fDummy, "CONOUT$", "w", stdout);
+  freopen_s(&fDummy, "CONOUT$", "w", stderr);
+  freopen_s(&fDummy, "CONIN$", "r", stdin);
+  std::cout.clear();
+  std::clog.clear();
+  std::cerr.clear();
+  std::cin.clear();
 }
 
 using lvk::TriangleApp;

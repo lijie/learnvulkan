@@ -1,6 +1,7 @@
 #pragma once
 
 #include <functional>
+#include <string>
 #include <vector>
 
 #include "primitives.h"
@@ -14,6 +15,14 @@ struct CameraMatrix {
   mat4f view{1};
   mat4f proj{1};
 };
+
+struct Texture {
+  Texture(const std::string& inpath) { path = inpath; };
+
+  std::string path;
+};
+
+using SceneHandle = int;
 
 class Scene {
  public:
