@@ -1,7 +1,10 @@
+#include <vulkan/vulkan_core.h>
+
 #include <array>
 #include <iostream>
 
 #include "base/primitives.h"
+#include "base/scene.h"
 #include "base/vertex_data.h"
 #include "base/vulkan_app.h"
 #include "base/vulkan_buffer.h"
@@ -11,8 +14,6 @@
 #include "base/vulkan_pipelinebuilder.h"
 #include "base/vulkan_texture.h"
 #include "base/vulkan_tools.h"
-#include "base/scene.h"
-
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -23,116 +24,80 @@
 #include "glm/glm.hpp"
 
 #define VERTEX_BUFFER_BIND_ID 0
+#define WIDTH 1280
+#define HEIGHT 720
 
 namespace lvk {
 using lvk::VulkanApp;
 
-// Vertex layout for this example
-#if 0
-struct Vertex {
-  float pos[3];
-  float uv[2];
-  float normal[3];
-};
-#endif
-
-class MultiCubes : public VulkanApp {
+class TriangleApp : public VulkanApp {
  private:
   VulkanTexture *texture_{nullptr};
-
-  lvk::VulkanBuffer uniformBufferVS;
-
-  struct {
-    glm::mat4 projection;
-    glm::mat4 modelView;
-    glm::vec4 viewPos;
-    float lodBias = 0.0f;
-  } uboVS;
 
   struct {
     VkPipeline solid;
   } pipelines;
 
-  VkPipelineLayout pipelineLayout;
+  // VkPipelineLayout pipelineLayout;
   VkDescriptorSet descriptorSet;
-  VkDescriptorSetLayout descriptorSetLayout;
+  // VkDescriptorSetLayout descriptorSetLayout;
 
   VkClearColorValue defaultClearColor = {{0.025f, 0.025f, 0.025f, 1.0f}};
 
-  std::array<PrimitiveMesh, 1> meshList;
-  std::array<PrimitiveMeshVK, 1> vkmeshList;
+  // std::array<PrimitiveMesh, 1> meshList;
+  // std::array<PrimitiveMeshVK, 1> vkmeshList;
   Scene scene;
 
-  void LoadTexture();
+  // GLFWwindow *window_;
+
   void GenerateQuad();
-  void PrepareUniformBuffers();
-  void UpdateUniformBuffers();
   void SetupDescriptorSetLayout();
   void PreparePipelines();
-  void SetupDescriptorPool();
   void SetupDescriptorSet();
   void BuildCommandBuffers();
   void Draw();
+
+  void InitWindow();
 
  public:
   virtual void Render() override;
   virtual void Prepare() override;
 };
 
-void MultiCubes::GenerateQuad() {
-  // QuadMesh::instance()->InitForRendering(vulkanDevice);
-  meshList[0] = primitive::quad();
-  vkmeshList[0].CreateBuffer(&meshList[0], vulkanDevice);
+static void FramebufferResizeCallback(GLFWwindow *window, int width, int height) {
+  auto app = reinterpret_cast<TriangleApp *>(glfwGetWindowUserPointer(window));
+  // app->framebuffer_resized_ = true;
+}
+
+void TriangleApp::InitWindow() {
+  glfwInit();
+
+  glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+  glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+
+  auto w = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
+  glfwSetWindowUserPointer(w, this);
+  glfwSetFramebufferSizeCallback(w, FramebufferResizeCallback);
+  window = w;
+}
+
+void TriangleApp::GenerateQuad() {
+  scene.meshList = {
+      primitive::quad(),
+  };
+  scene.textureList = {
+      {"../assets/texture.jpg"},
+  };
 
   Transform t{
-    .translation{0, 0, 0},
-    .rotation{0, 0, 0},
-    .scale{1, 1, 1},
+      .translation{0, 0, 0},
+      .rotation{0, 0, 0},
+      .scale{1, 1, 1},
   };
-  scene.AddNode(0, 0, t);
+  scene.AddNode(0, 0, 0, t);
 }
 
-void MultiCubes::UpdateUniformBuffers() {
-  uboVS.projection = glm::perspective(glm::radians(45.0f), float(width / height), 0.1f, 10.0f);
-
-  auto view = glm::lookAt(glm::vec3(0.0f, 0.0f, 4.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-  // uboVS.modelView = view * glm::rotate(glm::mat4(1.0f), glm::radians(0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-  uboVS.modelView = view * scene.GetNode(0)->localMatrix();
-  // uboVS.viewPos = camera.viewPos;
-  memcpy(uniformBufferVS.mapped(), &uboVS, sizeof(uboVS));
-}
-
-// Prepare and initialize uniform buffer containing shader uniforms
-void MultiCubes::PrepareUniformBuffers() {
-  // Vertex shader uniform buffer block
-  VK_CHECK_RESULT(vulkanDevice->CreateBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                                             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                                             &uniformBufferVS, sizeof(uboVS), &uboVS));
-  VK_CHECK_RESULT(uniformBufferVS.Map());
-
-  UpdateUniformBuffers();
-}
-
-void MultiCubes::SetupDescriptorSetLayout() {
-  std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
-      // Binding 0 : Vertex shader uniform buffer
-      lvk::initializers::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0),
-      // Binding 1 : Fragment shader image sampler
-      lvk::initializers::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                                                    VK_SHADER_STAGE_FRAGMENT_BIT, 1)};
-
-  VkDescriptorSetLayoutCreateInfo descriptorLayout = lvk::initializers::DescriptorSetLayoutCreateInfo(
-      setLayoutBindings.data(), static_cast<uint32_t>(setLayoutBindings.size()));
-
-  VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device, &descriptorLayout, nullptr, &descriptorSetLayout));
-
-  VkPipelineLayoutCreateInfo pPipelineLayoutCreateInfo =
-      lvk::initializers::PipelineLayoutCreateInfo(&descriptorSetLayout, 1);
-
-  VK_CHECK_RESULT(vkCreatePipelineLayout(device, &pPipelineLayoutCreateInfo, nullptr, &pipelineLayout));
-}
-
-void MultiCubes::PreparePipelines() {
+void TriangleApp::PreparePipelines() {
   std::vector<VkPipelineColorBlendAttachmentState> colorBlendAttachmentStates;
   colorBlendAttachmentStates.push_back(initializers::PipelineColorBlendAttachmentState(0xf, VK_FALSE));
 
@@ -153,53 +118,46 @@ void MultiCubes::PreparePipelines() {
       .depthCompareOp(VK_COMPARE_OP_LESS_OR_EQUAL)
       .rasterizationSamples(VK_SAMPLE_COUNT_1_BIT)
       .shaderStages(shaderStages)
-      .build(device, pipelineCache, pipelineLayout, renderPass, &pipelines.solid, "05-GraphicPipline");
+      .build(device, pipelineCache, context_->PipelineLayout(), renderPass, &pipelines.solid, "05-GraphicPipline");
 }
 
-void MultiCubes::SetupDescriptorPool() {
-  // Example uses one ubo and one image sampler
-  std::vector<VkDescriptorPoolSize> poolSizes = {
-      initializers::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1),
-      initializers::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1)};
-
-  VkDescriptorPoolCreateInfo descriptorPoolInfo =
-      initializers::DescriptorPoolCreateInfo(static_cast<uint32_t>(poolSizes.size()), poolSizes.data(), 2);
-
-  VK_CHECK_RESULT(vkCreateDescriptorPool(device, &descriptorPoolInfo, nullptr, &descriptorPool));
-}
-
-void MultiCubes::SetupDescriptorSet() {
+void TriangleApp::SetupDescriptorSet() {
   VkDescriptorSetAllocateInfo allocInfo =
-      initializers::DescriptorSetAllocateInfo(descriptorPool, &descriptorSetLayout, 1);
+      initializers::DescriptorSetAllocateInfo(context_->DescriptorPool(), context_->DescriptorSetLayout(), 1);
 
   VK_CHECK_RESULT(vkAllocateDescriptorSets(device, &allocInfo, &descriptorSet));
 
   // Setup a descriptor image info for the current texture to be used as a
   // combined image sampler
-  VkDescriptorImageInfo textureDescriptor = texture_->GetDescriptorImageInfo();
+  VkDescriptorImageInfo textureDescriptor =
+      context_->GetVkNode(0)->vkTexture->GetDescriptorImageInfo();  // texture_->GetDescriptorImageInfo();
+
+  auto descriptor = context_->CreateDescriptor2();
 
   std::vector<VkWriteDescriptorSet> writeDescriptorSets = {
-      // Binding 0 : Vertex shader uniform buffer
-      initializers::WriteDescriptorSet(descriptorSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0,
-                                       &uniformBufferVS.descriptor_),
-      // Binding 1 : Fragment shader texture sampler
-      //	Fragment shader: layout (binding = 1) uniform sampler2D
-      // samplerColor;
-      initializers::WriteDescriptorSet(descriptorSet,
-                                       VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,  // The descriptor set will
-                                                                                   // use a combined image
-                                                                                   // sampler (sampler and
-                                                                                   // image could be split)
-                                       1,                                          // Shader binding point 1
-                                       &textureDescriptor)  // Pointer to the descriptor image for our
-                                                            // texture
+    // Binding 0 : Vertex shader uniform buffer
+    initializers::WriteDescriptorSet(descriptorSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1, &descriptor),
+  // &uniformBufferVS.descriptor_),
+// Binding 1 : Fragment shader texture sampler
+//	Fragment shader: layout (binding = 1) uniform sampler2D
+// samplerColor;
+#if 1
+    initializers::WriteDescriptorSet(descriptorSet,
+                                     VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,  // The descriptor set will
+                                                                                 // use a combined image
+                                                                                 // sampler (sampler and
+                                                                                 // image could be split)
+                                     2,                                          // Shader binding point 1
+                                     &textureDescriptor)  // Pointer to the descriptor image for our
+                                                          // texture
+#endif
   };
 
   vkUpdateDescriptorSets(device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0,
                          NULL);
 }
 
-void MultiCubes::BuildCommandBuffers() {
+void TriangleApp::BuildCommandBuffers() {
   VkCommandBufferBeginInfo cmdBufInfo = initializers::CommandBufferBeginInfo();
 
   VkClearValue clearValues[2];
@@ -229,17 +187,19 @@ void MultiCubes::BuildCommandBuffers() {
     VkRect2D scissor = initializers::Rect2D(width, height, 0, 0);
     vkCmdSetScissor(drawCmdBuffers[i], 0, 1, &scissor);
 
-    vkCmdBindDescriptorSets(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSet, 0,
-                            NULL);
+    uint32_t dynamic_offset = 0;
+    vkCmdBindDescriptorSets(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, context_->PipelineLayout(), 0, 1,
+                            &descriptorSet, 1, &dynamic_offset);
     vkCmdBindPipeline(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines.solid);
 
+    const auto &vkNode = context_->GetVkNode(0);
     VkDeviceSize offsets[1] = {0};
-    auto vkvb = vkmeshList[0].vertexBuffer->buffer();
-    auto vkib = vkmeshList[0].indexBuffer->buffer();
+    auto vkvb = vkNode->vkMesh->vertexBuffer->buffer();
+    auto vkib = vkNode->vkMesh->indexBuffer->buffer();
     vkCmdBindVertexBuffers(drawCmdBuffers[i], VERTEX_BUFFER_BIND_ID, 1, &vkvb, offsets);
     vkCmdBindIndexBuffer(drawCmdBuffers[i], vkib, 0, VK_INDEX_TYPE_UINT32);
 
-    vkCmdDrawIndexed(drawCmdBuffers[i], meshList[0].indices.size(), 1, 0, 0, 0);
+    vkCmdDrawIndexed(drawCmdBuffers[i], vkNode->vkMesh->indexCount, 1, 0, 0, 0);
 
     // drawUI(drawCmdBuffers[i]);
 
@@ -249,26 +209,21 @@ void MultiCubes::BuildCommandBuffers() {
   }
 }
 
-void MultiCubes::LoadTexture() {
-  texture_ = new VulkanTexture(vulkanDevice, "../assets/texture.jpg", queue);
-  texture_->LoadTexture();
-  return;
-}
-
-void MultiCubes::Prepare() {
+void TriangleApp::Prepare() {
+  InitWindow();
   VulkanApp::Prepare();
-  LoadTexture();
   GenerateQuad();
-  PrepareUniformBuffers();
-  SetupDescriptorSetLayout();
+  context_->CreateVulkanScene(&scene, vulkanDevice);
+  context_->PrepareUniformBuffers(&scene, vulkanDevice);
+  context_->SetupDescriptorSetLayout(vulkanDevice);
   PreparePipelines();
-  SetupDescriptorPool();
+  context_->SetupDescriptorPool(vulkanDevice);
   SetupDescriptorSet();
   BuildCommandBuffers();
   prepared = true;
 }
 
-void MultiCubes::Draw() {
+void TriangleApp::Draw() {
   VulkanApp::PrepareFrame();
 
   // Command buffer to be submitted to the queue
@@ -281,7 +236,7 @@ void MultiCubes::Draw() {
   VulkanApp::SubmitFrame();
 }
 
-void MultiCubes::Render() {
+void TriangleApp::Render() {
   if (!prepared) return;
   Draw();
 }
@@ -295,19 +250,24 @@ bool InitConsole() {
   if (!AllocConsole()) {
     return false;
   }
-  if (freopen_s(&g_ic_file_cout_stream, "CONOUT$", "w", stdout) != 0) {
-    return false;
-  }  // For std::cout
-  if (freopen_s(&g_ic_file_cin_stream, "CONIN$", "w+", stdin) != 0) {
-    return false;
-  }  // For std::cin
+  // std::cout, std::clog, std::cerr, std::cin
+  FILE *fDummy;
+  freopen_s(&fDummy, "CONOUT$", "w", stdout);
+  freopen_s(&fDummy, "CONOUT$", "w", stderr);
+  freopen_s(&fDummy, "CONIN$", "r", stdin);
+  std::cout.clear();
+  std::clog.clear();
+  std::cerr.clear();
+  std::cin.clear();
   return true;
 }
 
-using lvk::MultiCubes;
+using lvk::TriangleApp;
 using lvk::VulkanApp;
 
 static VulkanApp *vulkanApp{nullptr};
+
+#if 0
 // Windows entry point
 LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
   if (vulkanApp != NULL) {
@@ -320,9 +280,23 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int) {
   for (int32_t i = 0; i < __argc; i++) {
     VulkanApp::args.push_back(__argv[i]);
   };
-  vulkanApp = new MultiCubes();
+  vulkanApp = new TriangleApp();
   vulkanApp->InitVulkan();
   vulkanApp->SetupWindow(hInstance, WndProc);
+  vulkanApp->Prepare();
+  vulkanApp->RenderLoop();
+  delete (vulkanApp);
+  return 0;
+}
+#endif
+
+int main() {
+  for (int32_t i = 0; i < __argc; i++) {
+    VulkanApp::args.push_back(__argv[i]);
+  };
+  vulkanApp = new TriangleApp();
+  vulkanApp->InitVulkan();
+  // vulkanApp->SetupWindow(hInstance, WndProc);
   vulkanApp->Prepare();
   vulkanApp->RenderLoop();
   delete (vulkanApp);

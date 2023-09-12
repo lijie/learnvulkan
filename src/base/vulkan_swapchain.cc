@@ -3,20 +3,24 @@
 #include <assert.h>
 
 #include "vulkan_tools.h"
+#include "window.h"
 
 namespace lvk {
 
-void VulkanSwapchain::InitSurface(void* platformHandle, void* platformWindow) {
+void VulkanSwapchain::InitSurface(void* platformHandle, Window* platformWindow) {
   VkResult err = VK_SUCCESS;
 
   // Create the os-specific surface
 #if defined(VK_USE_PLATFORM_WIN32_KHR)
-  VkWin32SurfaceCreateInfoKHR surfaceCreateInfo = {};
-  surfaceCreateInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-  surfaceCreateInfo.hinstance = (HINSTANCE)platformHandle;
-  surfaceCreateInfo.hwnd = (HWND)platformWindow;
-  err = vkCreateWin32SurfaceKHR(instance_, &surfaceCreateInfo, nullptr,
-                                &surface_);
+  // VK_CHECK_RESULT(glfwCreateWindowSurface(instance_, (GLFWwindow *)platformWindow, nullptr, &surface_));
+  platformWindow->CreateWindowSurface(instance_, &surface_);
+
+  // VkWin32SurfaceCreateInfoKHR surfaceCreateInfo = {};
+  // surfaceCreateInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+  // surfaceCreateInfo.hinstance = (HINSTANCE)platformHandle;
+  // surfaceCreateInfo.hwnd = (HWND)platformWindow;
+  // err = vkCreateWin32SurfaceKHR(instance_, &surfaceCreateInfo, nullptr,
+  //                               &surface_);
 #elif defined(VK_USE_PLATFORM_ANDROID_KHR)
   VkAndroidSurfaceCreateInfoKHR surfaceCreateInfo = {};
   surfaceCreateInfo.sType = VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR;

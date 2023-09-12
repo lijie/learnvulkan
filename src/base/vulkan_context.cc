@@ -209,8 +209,10 @@ VkResult VulkanContext::CreateInstance(bool enableValidation) {
   if (extCount > 0) {
     std::vector<VkExtensionProperties> extensions(extCount);
     if (vkEnumerateInstanceExtensionProperties(nullptr, &extCount, &extensions.front()) == VK_SUCCESS) {
+      std::cout << "supported extensions:" << std::endl;
       for (VkExtensionProperties extension : extensions) {
         supportedInstanceExtensions.push_back(extension.extensionName);
+        std::cout << "\t" << extension.extensionName << std::endl;
       }
     }
   }
@@ -275,11 +277,13 @@ VkResult VulkanContext::CreateInstance(bool enableValidation) {
     std::vector<VkLayerProperties> instanceLayerProperties(instanceLayerCount);
     vkEnumerateInstanceLayerProperties(&instanceLayerCount, instanceLayerProperties.data());
     bool validationLayerPresent = false;
+    std::cout << "InstanceLayer:" << std::endl;
     for (VkLayerProperties layer : instanceLayerProperties) {
       if (strcmp(layer.layerName, validationLayerName) == 0) {
         validationLayerPresent = true;
         break;
       }
+      std::cout << "\t" << layer.layerName << std::endl;
     }
     if (validationLayerPresent) {
       instanceCreateInfo.ppEnabledLayerNames = &validationLayerName;

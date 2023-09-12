@@ -62,9 +62,11 @@ void SetupDebugging(VkInstance instance) {
   VkDebugUtilsMessengerCreateInfoEXT debugUtilsMessengerCI{};
   debugUtilsMessengerCI.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
   debugUtilsMessengerCI.messageSeverity =
+      VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |
       VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
   debugUtilsMessengerCI.messageType =
-      VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT;
+      VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+      VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT;
   debugUtilsMessengerCI.pfnUserCallback = DebugUtilsMessengerCallback;
   VkResult result = vkCreateDebugUtilsMessengerEXT(instance, &debugUtilsMessengerCI, nullptr, &debugUtilsMessenger);
   assert(result == VK_SUCCESS);
@@ -122,7 +124,7 @@ VkResult SetDebugObjectName(VkDevice device, VkObjectType type, uint64_t handle,
       .pObjectName = name,
   };
 
-  return VK_SUCCESS; // vkSetDebugUtilsObjectNameEXT(device, &ni);
+  return VK_SUCCESS;  // vkSetDebugUtilsObjectNameEXT(device, &ni);
 }
 }  // namespace debugutils
 }  // namespace lvk

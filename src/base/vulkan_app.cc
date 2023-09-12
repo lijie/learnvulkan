@@ -9,6 +9,7 @@
 #include "vulkan_device.h"
 #include "vulkan_initializers.h"
 #include "vulkan_tools.h"
+#include "window.h"
 
 namespace lvk {
 std::vector<const char*> VulkanApp::args;
@@ -17,6 +18,7 @@ bool VulkanApp::InitVulkan() {
   VkResult err;
 
   context_ = new VulkanContext();
+  window_ = Window::NewWindow(WindowType::Glfw, width, height);
 
 #if defined(VK_USE_PLATFORM_ANDROID_KHR)
   vks::android::loadVulkanFunctions(instance);
@@ -370,57 +372,13 @@ void VulkanApp::NextFrame() {
 }
 
 void VulkanApp::RenderLoop() {
-#if 0
-// SRS - for non-apple plaforms, handle benchmarking here within
-// VulkanExampleBase::renderLoop()
-//     - for macOS, handle benchmarking within NSApp rendering loop via
-//     displayLinkOutputCb()
-#if !(defined(VK_USE_PLATFORM_IOS_MVK) || defined(VK_USE_PLATFORM_MACOS_MVK))
-  if (benchmark.active) {
-#if defined(VK_USE_PLATFORM_WAYLAND_KHR)
-    while (!configured) wl_display_dispatch(display);
-    while (wl_display_prepare_read(display) != 0)
-      wl_display_dispatch_pending(display);
-    wl_display_flush(display);
-    wl_display_read_events(display);
-    wl_display_dispatch_pending(display);
-#endif
-
-    benchmark.run([=] { render(); }, vulkanDevice->properties);
-    vkDeviceWaitIdle(device);
-    if (benchmark.filename != "") {
-      benchmark.saveResults();
-    }
-    return;
-  }
-#endif
-#endif
-
-  destWidth = width;
-  destHeight = height;
-  lastTimestamp = std::chrono::high_resolution_clock::now();
-  tPrevEnd = lastTimestamp;
-#if defined(_WIN32)
-  MSG msg;
-  bool quitMessageReceived = false;
-  while (!quitMessageReceived) {
-    while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
-      TranslateMessage(&msg);
-      DispatchMessage(&msg);
-      if (msg.message == WM_QUIT) {
-        quitMessageReceived = true;
-        break;
-      }
-    }
-    if (prepared && !IsIconic(window)) {
+  while (!window_->ShouldClose()) {
+    window_->PollEvents();
+    if (prepared) {
       NextFrame();
     }
   }
-#endif
-  // Flush device to make sure all resources can be freed
-  if (device != VK_NULL_HANDLE) {
-    vkDeviceWaitIdle(device);
-  }
+  vkDeviceWaitIdle(device);
 }
 
 std::string VulkanApp::GetShadersPath() const { return ""; }
@@ -499,7 +457,7 @@ void VulkanApp::Prepare() {
 #endif
 }
 
-void VulkanApp::InitSwapchain() { swapChain.InitSurface(windowInstance, window); }
+void VulkanApp::InitSwapchain() { swapChain.InitSurface(windowInstance, window_); }
 
 void VulkanApp::SetupSwapchain() { swapChain.Create(&width, &height, settings.vsync, settings.fullscreen); }
 
@@ -513,127 +471,9 @@ std::string VulkanApp::GetWindowTitle() {
   return windowTitle;
 }
 
-void VulkanApp::HandleMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
-  switch (uMsg) {
-    case WM_CLOSE:
-      prepared = false;
-      DestroyWindow(hWnd);
-      PostQuitMessage(0);
-      break;
-    case WM_PAINT:
-      ValidateRect(window, NULL);
-      break;
+void VulkanApp::HandleMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {}
+
 #if 0
-    case WM_KEYDOWN:
-      switch (wParam) {
-        case KEY_P:
-          paused = !paused;
-          break;
-        case KEY_F1:
-          UIOverlay.visible = !UIOverlay.visible;
-          UIOverlay.updated = true;
-          break;
-        case KEY_ESCAPE:
-          PostQuitMessage(0);
-          break;
-      }
-
-      if (camera.type == Camera::firstperson) {
-        switch (wParam) {
-          case KEY_W:
-            camera.keys.up = true;
-            break;
-          case KEY_S:
-            camera.keys.down = true;
-            break;
-          case KEY_A:
-            camera.keys.left = true;
-            break;
-          case KEY_D:
-            camera.keys.right = true;
-            break;
-        }
-      }
-
-      keyPressed((uint32_t)wParam);
-      break;
-    case WM_KEYUP:
-      if (camera.type == Camera::firstperson) {
-        switch (wParam) {
-          case KEY_W:
-            camera.keys.up = false;
-            break;
-          case KEY_S:
-            camera.keys.down = false;
-            break;
-          case KEY_A:
-            camera.keys.left = false;
-            break;
-          case KEY_D:
-            camera.keys.right = false;
-            break;
-        }
-      }
-      break;
-    case WM_LBUTTONDOWN:
-      mousePos = glm::vec2((float)LOWORD(lParam), (float)HIWORD(lParam));
-      mouseButtons.left = true;
-      break;
-    case WM_RBUTTONDOWN:
-      mousePos = glm::vec2((float)LOWORD(lParam), (float)HIWORD(lParam));
-      mouseButtons.right = true;
-      break;
-    case WM_MBUTTONDOWN:
-      mousePos = glm::vec2((float)LOWORD(lParam), (float)HIWORD(lParam));
-      mouseButtons.middle = true;
-      break;
-    case WM_LBUTTONUP:
-      mouseButtons.left = false;
-      break;
-    case WM_RBUTTONUP:
-      mouseButtons.right = false;
-      break;
-    case WM_MBUTTONUP:
-      mouseButtons.middle = false;
-      break;
-    case WM_MOUSEWHEEL: {
-      short wheelDelta = GET_WHEEL_DELTA_WPARAM(wParam);
-      camera.translate(glm::vec3(0.0f, 0.0f, (float)wheelDelta * 0.005f));
-      viewUpdated = true;
-      break;
-    }
-    case WM_MOUSEMOVE: {
-      handleMouseMove(LOWORD(lParam), HIWORD(lParam));
-      break;
-    }
-    case WM_SIZE:
-      if ((prepared) && (wParam != SIZE_MINIMIZED)) {
-        if ((resizing) ||
-            ((wParam == SIZE_MAXIMIZED) || (wParam == SIZE_RESTORED))) {
-          destWidth = LOWORD(lParam);
-          destHeight = HIWORD(lParam);
-          windowResize();
-        }
-      }
-      break;
-    case WM_GETMINMAXINFO: {
-      LPMINMAXINFO minMaxInfo = (LPMINMAXINFO)lParam;
-      minMaxInfo->ptMinTrackSize.x = 64;
-      minMaxInfo->ptMinTrackSize.y = 64;
-      break;
-    }
-    case WM_ENTERSIZEMOVE:
-      resizing = true;
-      break;
-    case WM_EXITSIZEMOVE:
-      resizing = false;
-      break;
-#endif
-  }
-
-  // OnHandleMessage(hWnd, uMsg, wParam, lParam);
-}
-
 HWND VulkanApp::SetupWindow(HINSTANCE hinstance, WNDPROC wndproc) {
   this->windowInstance = hinstance;
 
@@ -726,4 +566,5 @@ HWND VulkanApp::SetupWindow(HINSTANCE hinstance, WNDPROC wndproc) {
 
   return window;
 }
+#endif
 }  // namespace lvk

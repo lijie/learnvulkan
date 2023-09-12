@@ -3,9 +3,13 @@
 #include <chrono>
 #include <string>
 #include <vector>
+#include "window.h"
+
+#define GLFW_INCLUDE_VULKAN
+#include <GLFW/glfw3.h>
 
 #include "commandline_parser.h"
-#include "vulkan/vulkan.h"
+// #include "vulkan/vulkan.h"
 #include "vulkan_swapchain.h"
 
 namespace lvk {
@@ -19,7 +23,7 @@ class VulkanApp {
   struct Settings {
     /** @brief Activates validation layers (and message output) when set to true
      */
-    bool validation = false;
+    bool validation = true;
     /** @brief Set to true if fullscreen mode has been requested via command
      * line */
     bool fullscreen = false;
@@ -85,7 +89,9 @@ class VulkanApp {
   std::vector<VkShaderModule> shaderModules;
 
   // win32 window
-  HWND window;
+  // HWND window;
+  // void *window{nullptr};
+  Window *window_;
   HINSTANCE windowInstance;
   uint32_t width = 1280;
   uint32_t height = 720;

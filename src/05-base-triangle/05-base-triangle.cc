@@ -24,6 +24,8 @@
 #include "glm/glm.hpp"
 
 #define VERTEX_BUFFER_BIND_ID 0
+#define WIDTH 1280
+#define HEIGHT 720
 
 namespace lvk {
 using lvk::VulkanApp;
@@ -45,6 +47,8 @@ class TriangleApp : public VulkanApp {
   // std::array<PrimitiveMesh, 1> meshList;
   // std::array<PrimitiveMeshVK, 1> vkmeshList;
   Scene scene;
+
+  // GLFWwindow *window_;
 
   void GenerateQuad();
   void SetupDescriptorSetLayout();
@@ -106,7 +110,8 @@ void TriangleApp::SetupDescriptorSet() {
 
   // Setup a descriptor image info for the current texture to be used as a
   // combined image sampler
-  VkDescriptorImageInfo textureDescriptor = context_->GetVkNode(0)->vkTexture->GetDescriptorImageInfo(); // texture_->GetDescriptorImageInfo();
+  VkDescriptorImageInfo textureDescriptor =
+      context_->GetVkNode(0)->vkTexture->GetDescriptorImageInfo();  // texture_->GetDescriptorImageInfo();
 
   auto descriptor = context_->CreateDescriptor2();
 
@@ -168,7 +173,7 @@ void TriangleApp::BuildCommandBuffers() {
                             &descriptorSet, 1, &dynamic_offset);
     vkCmdBindPipeline(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines.solid);
 
-    const auto& vkNode = context_->GetVkNode(0);
+    const auto &vkNode = context_->GetVkNode(0);
     VkDeviceSize offsets[1] = {0};
     auto vkvb = vkNode->vkMesh->vertexBuffer->buffer();
     auto vkib = vkNode->vkMesh->indexBuffer->buffer();
@@ -241,6 +246,8 @@ using lvk::TriangleApp;
 using lvk::VulkanApp;
 
 static VulkanApp *vulkanApp{nullptr};
+
+#if 0
 // Windows entry point
 LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
   if (vulkanApp != NULL) {
@@ -256,6 +263,20 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int) {
   vulkanApp = new TriangleApp();
   vulkanApp->InitVulkan();
   vulkanApp->SetupWindow(hInstance, WndProc);
+  vulkanApp->Prepare();
+  vulkanApp->RenderLoop();
+  delete (vulkanApp);
+  return 0;
+}
+#endif
+
+int main() {
+  for (int32_t i = 0; i < __argc; i++) {
+    VulkanApp::args.push_back(__argv[i]);
+  };
+  vulkanApp = new TriangleApp();
+  vulkanApp->InitVulkan();
+  // vulkanApp->SetupWindow(hInstance, WndProc);
   vulkanApp->Prepare();
   vulkanApp->RenderLoop();
   delete (vulkanApp);

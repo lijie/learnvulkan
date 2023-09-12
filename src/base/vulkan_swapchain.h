@@ -11,6 +11,8 @@ typedef struct _SwapchainBuffers {
   VkImageView view;
 } SwapchainBuffer;
 
+class Window;
+
 class VulkanSwapchain {
   friend class VulkanApp;
 
@@ -28,7 +30,7 @@ class VulkanSwapchain {
   uint32_t queueNodeIndex_ = UINT32_MAX;
 
  public:
-  void InitSurface(void* platformHandle, void* platformWindow);
+  void InitSurface(void* platformHandle, Window* platformWindow);
   void Connect(VkInstance instance, VkPhysicalDevice physicalDevice,
                VkDevice device);
   void Create(uint32_t* width, uint32_t* height, bool vsync = false,
