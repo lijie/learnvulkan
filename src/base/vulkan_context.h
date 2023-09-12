@@ -9,15 +9,25 @@
 #include "vulkan/vulkan_core.h"
 #include "vulkan_buffer.h"
 #include "vulkan_device.h"
+#include "vulkan_texture.h"
 
 namespace lvk {
 class VulkanDevice;
 class Scene;
+
+struct VulkanNode {
+  PrimitiveMeshVK *vkMesh{nullptr};
+  VulkanTexture *vkTexture{nullptr};
+};
+
 class VulkanContext {
  public:
   VulkanContext();
   ~VulkanContext();
 
+  void CreateVulkanScene(Scene *scene, VulkanDevice *device);
+
+  void LoadTextures(Scene *scene, VulkanDevice *device);
   void PrepareUniformBuffers(Scene *scene, VulkanDevice *device);
   void UpdateUniformBuffers(Scene *scene);
   void SetupDescriptorPool(VulkanDevice *device);
@@ -40,6 +50,8 @@ class VulkanContext {
   VkDescriptorPool DescriptorPool() { return descriptorPool_; }
   const VkDescriptorSetLayout *DescriptorSetLayout() { return &descriptorSetLayout_; }
   VkPipelineLayout PipelineLayout() { return pipelineLayout_; }
+
+  const VulkanNode *GetVkNode(int handle) { return &vkNodeList[handle]; }
 
  private:
   VkInstance instance_{VK_NULL_HANDLE};
@@ -71,6 +83,10 @@ class VulkanContext {
     std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions;
     VkPipelineVertexInputStateCreateInfo inputState;
   } vertexInputState_;
+
+  std::vector<VulkanTexture *> vkTextureList;
+  std::vector<PrimitiveMeshVK> vkMeshList;
+  std::vector<VulkanNode> vkNodeList;
 
   VkResult CreateInstance(bool enableValidation);
 };

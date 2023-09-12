@@ -259,4 +259,11 @@ VkDescriptorImageInfo VulkanTexture::GetDescriptorImageInfo() {
   // always fit the actual use, e.g. shader read)
   return textureDescriptor;
 }
+
+void VulkanTexture::LoadTexture(VulkanDevice *device, const std::string &path, VkQueue queue) {
+  device_ = device;
+  path_ = path;
+  queue_ = queue;
+  LoadTexture();
+}
 }  // namespace lvk

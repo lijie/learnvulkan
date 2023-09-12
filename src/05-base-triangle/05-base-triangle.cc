@@ -1,8 +1,10 @@
 #include <vulkan/vulkan_core.h>
+
 #include <array>
 #include <iostream>
 
 #include "base/primitives.h"
+#include "base/scene.h"
 #include "base/vertex_data.h"
 #include "base/vulkan_app.h"
 #include "base/vulkan_buffer.h"
@@ -12,8 +14,6 @@
 #include "base/vulkan_pipelinebuilder.h"
 #include "base/vulkan_texture.h"
 #include "base/vulkan_tools.h"
-#include "base/scene.h"
-
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -42,11 +42,10 @@ class TriangleApp : public VulkanApp {
 
   VkClearColorValue defaultClearColor = {{0.025f, 0.025f, 0.025f, 1.0f}};
 
-  std::array<PrimitiveMesh, 1> meshList;
-  std::array<PrimitiveMeshVK, 1> vkmeshList;
+  // std::array<PrimitiveMesh, 1> meshList;
+  // std::array<PrimitiveMeshVK, 1> vkmeshList;
   Scene scene;
 
-  void LoadTexture();
   void GenerateQuad();
   void SetupDescriptorSetLayout();
   void PreparePipelines();
@@ -60,38 +59,20 @@ class TriangleApp : public VulkanApp {
 };
 
 void TriangleApp::GenerateQuad() {
-  // QuadMesh::instance()->InitForRendering(vulkanDevice);
-  meshList[0] = primitive::quad();
-  vkmeshList[0].CreateBuffer(&meshList[0], vulkanDevice);
+  scene.meshList = {
+      primitive::quad(),
+  };
+  scene.textureList = {
+      {"../assets/texture.jpg"},
+  };
 
   Transform t{
-    .translation{0, 0, 0},
-    .rotation{0, 0, 0},
-    .scale{1, 1, 1},
+      .translation{0, 0, 0},
+      .rotation{0, 0, 0},
+      .scale{1, 1, 1},
   };
-  scene.AddNode(0, 0, t);
+  scene.AddNode(0, 0, 0, t);
 }
-
-#if 0
-void TriangleApp::SetupDescriptorSetLayout() {
-  std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
-      // Binding 0 : Vertex shader uniform buffer
-      lvk::initializers::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0),
-      // Binding 1 : Fragment shader image sampler
-      lvk::initializers::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                                                    VK_SHADER_STAGE_FRAGMENT_BIT, 1)};
-
-  VkDescriptorSetLayoutCreateInfo descriptorLayout = lvk::initializers::DescriptorSetLayoutCreateInfo(
-      setLayoutBindings.data(), static_cast<uint32_t>(setLayoutBindings.size()));
-
-  VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device, &descriptorLayout, nullptr, &descriptorSetLayout));
-
-  VkPipelineLayoutCreateInfo pPipelineLayoutCreateInfo =
-      lvk::initializers::PipelineLayoutCreateInfo(&descriptorSetLayout, 1);
-
-  VK_CHECK_RESULT(vkCreatePipelineLayout(device, &pPipelineLayoutCreateInfo, nullptr, &pipelineLayout));
-}
-#endif
 
 void TriangleApp::PreparePipelines() {
   std::vector<VkPipelineColorBlendAttachmentState> colorBlendAttachmentStates;
@@ -125,27 +106,27 @@ void TriangleApp::SetupDescriptorSet() {
 
   // Setup a descriptor image info for the current texture to be used as a
   // combined image sampler
-  VkDescriptorImageInfo textureDescriptor = texture_->GetDescriptorImageInfo();
+  VkDescriptorImageInfo textureDescriptor = context_->GetVkNode(0)->vkTexture->GetDescriptorImageInfo(); // texture_->GetDescriptorImageInfo();
 
   auto descriptor = context_->CreateDescriptor2();
 
   std::vector<VkWriteDescriptorSet> writeDescriptorSets = {
-      // Binding 0 : Vertex shader uniform buffer
-      initializers::WriteDescriptorSet(descriptorSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1, &descriptor),
-                                       // &uniformBufferVS.descriptor_),
-      // Binding 1 : Fragment shader texture sampler
-      //	Fragment shader: layout (binding = 1) uniform sampler2D
-      // samplerColor;
-      #if 1
-      initializers::WriteDescriptorSet(descriptorSet,
-                                       VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,  // The descriptor set will
-                                                                                   // use a combined image
-                                                                                   // sampler (sampler and
-                                                                                   // image could be split)
-                                       2,                                          // Shader binding point 1
-                                       &textureDescriptor)  // Pointer to the descriptor image for our
-                                                            // texture
-      #endif
+    // Binding 0 : Vertex shader uniform buffer
+    initializers::WriteDescriptorSet(descriptorSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1, &descriptor),
+  // &uniformBufferVS.descriptor_),
+// Binding 1 : Fragment shader texture sampler
+//	Fragment shader: layout (binding = 1) uniform sampler2D
+// samplerColor;
+#if 1
+    initializers::WriteDescriptorSet(descriptorSet,
+                                     VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,  // The descriptor set will
+                                                                                 // use a combined image
+                                                                                 // sampler (sampler and
+                                                                                 // image could be split)
+                                     2,                                          // Shader binding point 1
+                                     &textureDescriptor)  // Pointer to the descriptor image for our
+                                                          // texture
+#endif
   };
 
   vkUpdateDescriptorSets(device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0,
@@ -183,17 +164,18 @@ void TriangleApp::BuildCommandBuffers() {
     vkCmdSetScissor(drawCmdBuffers[i], 0, 1, &scissor);
 
     uint32_t dynamic_offset = 0;
-    vkCmdBindDescriptorSets(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, context_->PipelineLayout(), 0, 1, &descriptorSet, 1,
-                            &dynamic_offset);
+    vkCmdBindDescriptorSets(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, context_->PipelineLayout(), 0, 1,
+                            &descriptorSet, 1, &dynamic_offset);
     vkCmdBindPipeline(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines.solid);
 
+    const auto& vkNode = context_->GetVkNode(0);
     VkDeviceSize offsets[1] = {0};
-    auto vkvb = vkmeshList[0].vertexBuffer->buffer();
-    auto vkib = vkmeshList[0].indexBuffer->buffer();
+    auto vkvb = vkNode->vkMesh->vertexBuffer->buffer();
+    auto vkib = vkNode->vkMesh->indexBuffer->buffer();
     vkCmdBindVertexBuffers(drawCmdBuffers[i], VERTEX_BUFFER_BIND_ID, 1, &vkvb, offsets);
     vkCmdBindIndexBuffer(drawCmdBuffers[i], vkib, 0, VK_INDEX_TYPE_UINT32);
 
-    vkCmdDrawIndexed(drawCmdBuffers[i], meshList[0].indices.size(), 1, 0, 0, 0);
+    vkCmdDrawIndexed(drawCmdBuffers[i], vkNode->vkMesh->indexCount, 1, 0, 0, 0);
 
     // drawUI(drawCmdBuffers[i]);
 
@@ -203,19 +185,12 @@ void TriangleApp::BuildCommandBuffers() {
   }
 }
 
-void TriangleApp::LoadTexture() {
-  texture_ = new VulkanTexture(vulkanDevice, "../assets/texture.jpg", queue);
-  texture_->LoadTexture();
-  return;
-}
-
 void TriangleApp::Prepare() {
   VulkanApp::Prepare();
-  LoadTexture();
   GenerateQuad();
+  context_->CreateVulkanScene(&scene, vulkanDevice);
   context_->PrepareUniformBuffers(&scene, vulkanDevice);
   context_->SetupDescriptorSetLayout(vulkanDevice);
-  // SetupDescriptorSetLayout();
   PreparePipelines();
   context_->SetupDescriptorPool(vulkanDevice);
   SetupDescriptorSet();
@@ -259,6 +234,7 @@ bool InitConsole() {
   std::clog.clear();
   std::cerr.clear();
   std::cin.clear();
+  return true;
 }
 
 using lvk::TriangleApp;

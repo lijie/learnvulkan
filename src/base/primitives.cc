@@ -4,12 +4,12 @@
 
 namespace lvk {
 
-void PrimitiveMeshVK::CreateBuffer(PrimitiveMesh *mesh, VulkanDevice *device) {
+void PrimitiveMeshVK::CreateBuffer(const PrimitiveMesh *mesh, VulkanDevice *device) {
   if (vertexBuffer == nullptr) {
     vertexBuffer = new VulkanBuffer();
 
     uint32_t vsize = static_cast<uint32_t>(sizeof(VertexLayout) * mesh->vertices.size());
-    void *vdata = mesh->vertices.data();
+    const void *vdata = mesh->vertices.data();
     VK_CHECK_RESULT(device->CreateBuffer(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
                                          VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
                                          vertexBuffer, vsize, vdata));
@@ -19,7 +19,7 @@ void PrimitiveMeshVK::CreateBuffer(PrimitiveMesh *mesh, VulkanDevice *device) {
     indexBuffer = new VulkanBuffer();
 
     uint32_t isize = static_cast<uint32_t>(sizeof(VertexLayout) * mesh->indices.size());
-    void *idata = mesh->indices.data();
+    const void *idata = mesh->indices.data();
     VK_CHECK_RESULT(device->CreateBuffer(VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
                                          VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
                                          indexBuffer, isize, idata));

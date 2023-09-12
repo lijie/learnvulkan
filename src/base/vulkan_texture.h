@@ -1,3 +1,5 @@
+#pragma once
+
 #include <string>
 
 #include "vulkan/vulkan.h"
@@ -10,9 +12,11 @@ class VulkanTexture {
  public:
   VulkanTexture(VulkanDevice *device, const std::string &path, VkQueue queue)
       : device_(device), path_(path), queue_(queue){};
+  VulkanTexture() {}
   ~VulkanTexture(){};
 
   void LoadTexture();
+  void LoadTexture(VulkanDevice *device, const std::string &path, VkQueue queue);
   VkDescriptorImageInfo GetDescriptorImageInfo();
 
  private:

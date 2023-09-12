@@ -8,6 +8,7 @@
 #include "primitives.h"
 #include "scene.h"
 #include "vertex_data.h"
+#include "vulkan/vulkan_core.h"
 #include "vulkan_debug.h"
 #include "vulkan_device.h"
 #include "vulkan_initializers.h"
@@ -22,6 +23,31 @@ VulkanContext::VulkanContext() { VK_CHECK_RESULT(CreateInstance(true)); }
 VulkanContext::~VulkanContext() {
   if (uniformBuffers_.model) {
     free(uniformBuffers_.model);
+  }
+  for (const auto& tex : vkTextureList) {
+    delete tex;
+  }
+}
+
+void VulkanContext::CreateVulkanScene(Scene* scene, VulkanDevice* device) {
+  VkQueue queue;
+  vkGetDeviceQueue(device->device(), device->queueFamilyIndices_.graphics, 0, &queue);
+
+  vkNodeList.resize(scene->GetNodeCount());
+  vkMeshList.resize(scene->GetNodeCount());
+  for (int i = 0; i < scene->GetNodeCount(); i++) {
+    const auto& node = scene->GetNode(i);
+    auto& vknode = vkNodeList[i];
+    vkMeshList[i].CreateBuffer(scene->GetResourceMesh(i), device);
+    vkMeshList[i].indexCount = scene->GetResourceMesh(i)->indices.size();
+
+    if (node->texture != -1) {
+      auto texture = new VulkanTexture(device, scene->GetResourceTexture(i)->path, queue);
+      texture->LoadTexture();
+      vkTextureList.push_back(texture);
+      vknode.vkTexture = vkTextureList.back();
+    }
+    vknode.vkMesh = &vkMeshList[i];
   }
 }
 

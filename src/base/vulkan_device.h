@@ -11,6 +11,7 @@ class VulkanBuffer;
 
 class VulkanDevice {
   friend class VulkanApp;
+  friend class VulkanContext;
 
  public:
   VulkanDevice(VkPhysicalDevice physicalDevice);
