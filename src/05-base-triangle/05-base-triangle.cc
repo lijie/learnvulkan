@@ -63,29 +63,39 @@ class TriangleApp : public VulkanApp {
 };
 
 void TriangleApp::GenerateQuad() {
+  // prepare resource
   scene.meshList = {
       primitive::quad(),
   };
   scene.textureList = {
       {"../assets/texture.jpg"},
   };
-
-  Transform t{
-      .translation{0, 0, 0},
-      .rotation{0, 0, 0},
-      .scale{1, 1, 1},
+  scene.materialList = {
+      {
+          "05-vert.spv",
+          "05-frag.spv",
+      },
   };
-  scene.AddNode(0, 0, 0, t);
+
+  // init scene
+  Node n1 = {.transform =
+                 {
+                     .translation{0, 0, 0},
+                     .rotation{0, 0, 0},
+                     .scale{1, 1, 1},
+                 },
+             .mesh = 0,
+             .material = 0,
+             .materialParamters{
+                 .textureList{0},
+             }};
+
+  scene.AddNode(n1);
 }
 
 void TriangleApp::PreparePipelines() {
   std::vector<VkPipelineColorBlendAttachmentState> colorBlendAttachmentStates;
   colorBlendAttachmentStates.push_back(initializers::PipelineColorBlendAttachmentState(0xf, VK_FALSE));
-
-  // Load shaders
-  std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
-  shaderStages.push_back(LoadShader(GetShadersPath() + "05-vert.spv", VK_SHADER_STAGE_VERTEX_BIT));
-  shaderStages.push_back(LoadShader(GetShadersPath() + "05-frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT));
 
   VulkanPipelineBuilder()
       .dynamicStates({VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR})
@@ -98,7 +108,7 @@ void TriangleApp::PreparePipelines() {
       .depthWriteEnable(true)
       .depthCompareOp(VK_COMPARE_OP_LESS_OR_EQUAL)
       .rasterizationSamples(VK_SAMPLE_COUNT_1_BIT)
-      .shaderStages(shaderStages)
+      .shaderStages(context_->GetVkNode(0)->shaderStages)
       .build(device, pipelineCache, context_->PipelineLayout(), renderPass, &pipelines.solid, "05-GraphicPipline");
 }
 
@@ -194,10 +204,7 @@ void TriangleApp::Prepare() {
   VulkanApp::Prepare();
   GenerateQuad();
   context_->CreateVulkanScene(&scene, vulkanDevice);
-  context_->PrepareUniformBuffers(&scene, vulkanDevice);
-  context_->SetupDescriptorSetLayout(vulkanDevice);
   PreparePipelines();
-  context_->SetupDescriptorPool(vulkanDevice);
   SetupDescriptorSet();
   BuildCommandBuffers();
   prepared = true;
@@ -222,53 +229,10 @@ void TriangleApp::Render() {
 }
 }  // namespace lvk
 
-FILE *g_ic_file_cout_stream;
-FILE *g_ic_file_cin_stream;
-
-// Success: true , Failure: false
-bool InitConsole() {
-  if (!AllocConsole()) {
-    return false;
-  }
-  // std::cout, std::clog, std::cerr, std::cin
-  FILE *fDummy;
-  freopen_s(&fDummy, "CONOUT$", "w", stdout);
-  freopen_s(&fDummy, "CONOUT$", "w", stderr);
-  freopen_s(&fDummy, "CONIN$", "r", stdin);
-  std::cout.clear();
-  std::clog.clear();
-  std::cerr.clear();
-  std::cin.clear();
-  return true;
-}
-
 using lvk::TriangleApp;
 using lvk::VulkanApp;
 
 static VulkanApp *vulkanApp{nullptr};
-
-#if 0
-// Windows entry point
-LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
-  if (vulkanApp != NULL) {
-    vulkanApp->HandleMessages(hWnd, uMsg, wParam, lParam);
-  }
-  return (DefWindowProc(hWnd, uMsg, wParam, lParam));
-}
-int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int) {
-  InitConsole();
-  for (int32_t i = 0; i < __argc; i++) {
-    VulkanApp::args.push_back(__argv[i]);
-  };
-  vulkanApp = new TriangleApp();
-  vulkanApp->InitVulkan();
-  vulkanApp->SetupWindow(hInstance, WndProc);
-  vulkanApp->Prepare();
-  vulkanApp->RenderLoop();
-  delete (vulkanApp);
-  return 0;
-}
-#endif
 
 int main() {
   for (int32_t i = 0; i < __argc; i++) {

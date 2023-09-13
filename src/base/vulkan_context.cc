@@ -41,14 +41,21 @@ void VulkanContext::CreateVulkanScene(Scene* scene, VulkanDevice* device) {
     vkMeshList[i].CreateBuffer(scene->GetResourceMesh(i), device);
     vkMeshList[i].indexCount = scene->GetResourceMesh(i)->indices.size();
 
-    if (node->texture != -1) {
-      auto texture = new VulkanTexture(device, scene->GetResourceTexture(i)->path, queue);
+    if (node->materialParamters.textureList.size() > 0) {
+      auto texture_handle = node->materialParamters.textureList[0];
+      auto texture = new VulkanTexture(device, scene->GetResourceTexture(texture_handle)->path, queue);
       texture->LoadTexture();
       vkTextureList.push_back(texture);
       vknode.vkTexture = vkTextureList.back();
     }
     vknode.vkMesh = &vkMeshList[i];
+
+    LoadMaterial(&vknode, scene->GetResourceMaterial(node->material), device);
   }
+
+  PrepareUniformBuffers(scene, device);
+  SetupDescriptorSetLayout(device);
+  SetupDescriptorPool(device);
 }
 
 void VulkanContext::PrepareUniformBuffers(Scene* scene, VulkanDevice* device) {
@@ -312,4 +319,27 @@ VkDescriptorBufferInfo VulkanContext::CreateDescriptor(VulkanBuffer* buffer, VkD
   descriptor.offset = offset;
   return descriptor;
 }
+
+VkPipelineShaderStageCreateInfo VulkanContext::LoadShader(std::string fileName, VkShaderStageFlagBits stage,
+                                                          VulkanDevice* device) {
+  VkPipelineShaderStageCreateInfo shaderStage = {};
+  shaderStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+  shaderStage.stage = stage;
+#if defined(VK_USE_PLATFORM_ANDROID_KHR)
+  shaderStage.module = vks::tools::loadShader(androidApp->activity->assetManager, fileName.c_str(), device);
+#else
+  shaderStage.module = tools::LoadShader(fileName.c_str(), device->device());
+#endif
+  shaderStage.pName = "main";
+  assert(shaderStage.module != VK_NULL_HANDLE);
+  // shaderModules.push_back(shaderStage.module);
+  return shaderStage;
+}
+
+bool VulkanContext::LoadMaterial(VulkanNode* vkNode, const Material* mat, VulkanDevice* device) {
+  vkNode->shaderStages.push_back(LoadShader(mat->vertShaderPath, VK_SHADER_STAGE_VERTEX_BIT, device));
+  vkNode->shaderStages.push_back(LoadShader(mat->fragShaderPath, VK_SHADER_STAGE_FRAGMENT_BIT, device));
+  return true;
+}
+
 }  // namespace lvk

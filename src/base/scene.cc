@@ -23,13 +23,18 @@ Scene::Scene() {
       glm::lookAt(glm::vec3(0.0f, 0.0f, 4.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 }
 
-Node *Scene::AddNode(int meshIdx, int matIdx, int texId, const Transform &transform) {
+Node *Scene::AddNode(int meshIdx, int matIdx, const Transform &transform) {
   auto n = new Node{
       .transform = transform,
-      .material = matIdx,
       .mesh = meshIdx,
-      .texture = texId,
+      .material = matIdx,
   };
+  nodeList_.push_back(n);
+  return n;
+}
+
+Node *Scene::AddNode(const Node &from) {
+  auto n = new Node(from);
   nodeList_.push_back(n);
   return n;
 }
@@ -44,6 +49,7 @@ Node *Scene::GetNode(int idx) { return nodeList_[idx]; }
 
 const PrimitiveMesh *Scene::GetResourceMesh(int handle) { return &meshList[handle]; }
 const Texture *Scene::GetResourceTexture(int handle) { return &textureList[handle]; }
+const Material *Scene::GetResourceMaterial(int handle) { return &materialList[handle]; }
 
 Scene::~Scene() {
   for (auto &n : nodeList_) {

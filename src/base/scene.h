@@ -1,10 +1,12 @@
 #pragma once
 
 #include <functional>
+#include <map>
 #include <string>
 #include <vector>
 
 #include "primitives.h"
+
 
 namespace lvk {
 
@@ -29,13 +31,24 @@ struct Texture {
 
 using SceneHandle = int;
 
+struct Material {
+  std::string vertShaderPath;
+  std::string fragShaderPath;
+};
+
+struct MaterialParamters {
+  std::map<std::string, float> scalarMap;
+  std::map<std::string, vec3f> vectorMap;
+  std::vector<int> textureList;
+};
+
 // render node in scene
 struct Node {
   Transform transform;
-  mat4f matrix{1.0};
-  int material{0};
   int mesh{-1};
-  int texture{0};
+  int material{0};
+  MaterialParamters materialParamters;
+  mat4f matrix{1.0};
 
   mat4f localMatrix() {
     mat4f& m = matrix;
@@ -53,7 +66,8 @@ struct Assets {};
 class Scene {
  public:
   Scene();
-  Node* AddNode(int meshIdx, int matIdx, int texId, const Transform& transform);
+  Node* AddNode(int meshIdx, int matIdx, const Transform& transform);
+  Node* AddNode(const Node& from);
   void ForEachNode(std::function<void(Node*, int)> cb);
 
   ~Scene();
@@ -65,9 +79,11 @@ class Scene {
   // todo: resource manager
   std::vector<PrimitiveMesh> meshList;
   std::vector<Texture> textureList;
+  std::vector<Material> materialList;
 
   const PrimitiveMesh* GetResourceMesh(int handle);
   const Texture* GetResourceTexture(int handle);
+  const Material* GetResourceMaterial(int handle);
 
  protected:
   std::vector<Node*> nodeList_;

@@ -14,10 +14,14 @@
 namespace lvk {
 class VulkanDevice;
 class Scene;
+class Material;
 
 struct VulkanNode {
   PrimitiveMeshVK *vkMesh{nullptr};
   VulkanTexture *vkTexture{nullptr};
+  // alias shaders
+  std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
+  int pipelineHandle{0};
 };
 
 class VulkanContext {
@@ -84,10 +88,14 @@ class VulkanContext {
     VkPipelineVertexInputStateCreateInfo inputState;
   } vertexInputState_;
 
+  std::vector<VkPipeline> pipelineList;
+
   std::vector<VulkanTexture *> vkTextureList;
   std::vector<PrimitiveMeshVK> vkMeshList;
   std::vector<VulkanNode> vkNodeList;
 
   VkResult CreateInstance(bool enableValidation);
+  VkPipelineShaderStageCreateInfo LoadShader(std::string fileName, VkShaderStageFlagBits stage, VulkanDevice* device);
+  bool LoadMaterial(VulkanNode *vkNode, const Material *mat, VulkanDevice* device);
 };
 }  // namespace lvk
