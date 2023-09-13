@@ -106,6 +106,7 @@ bool VulkanApp::InitVulkan() {
     return false;
   }
   device = vulkanDevice->logicalDevice_;
+  context_->set_vulkan_device(vulkanDevice);
 
   // Get a graphics queue from the device
   vkGetDeviceQueue(device, vulkanDevice->queueFamilyIndices_.graphics, 0, &queue);
@@ -215,6 +216,7 @@ void VulkanApp::SetupDepthStencil() {
   VK_CHECK_RESULT(vkCreateImageView(device, &imageViewCI, nullptr, &depthStencil.view));
 }
 
+#if 0
 void VulkanApp::SetupRenderPass() {
   std::array<VkAttachmentDescription, 2> attachments = {};
   // Color attachment
@@ -286,12 +288,15 @@ void VulkanApp::SetupRenderPass() {
 
   VK_CHECK_RESULT(vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass));
 }
+#endif
 
+#if 0
 void VulkanApp::CreatePipelineCache() {
   VkPipelineCacheCreateInfo pipelineCacheCreateInfo = {};
   pipelineCacheCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
   VK_CHECK_RESULT(vkCreatePipelineCache(device, &pipelineCacheCreateInfo, nullptr, &pipelineCache));
 }
+#endif
 
 void VulkanApp::SetupFrameBuffer() {
   VkImageView attachments[2];
@@ -302,7 +307,7 @@ void VulkanApp::SetupFrameBuffer() {
   VkFramebufferCreateInfo frameBufferCreateInfo = {};
   frameBufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
   frameBufferCreateInfo.pNext = NULL;
-  frameBufferCreateInfo.renderPass = renderPass;
+  frameBufferCreateInfo.renderPass = context_->renderPass();// renderPass;
   frameBufferCreateInfo.attachmentCount = 2;
   frameBufferCreateInfo.pAttachments = attachments;
   frameBufferCreateInfo.width = width;
@@ -436,8 +441,9 @@ void VulkanApp::Prepare() {
   CreateCommandBuffers();
   CreateSynchronizationPrimitives();
   SetupDepthStencil();
-  SetupRenderPass();
-  CreatePipelineCache();
+  context_->SetupRenderPass(vulkanDevice, swapChain.colorFormat_, depthFormat);
+  // SetupRenderPass();
+  // CreatePipelineCache();
   SetupFrameBuffer();
 #if 0
   settings.overlay = settings.overlay && (!benchmark.active);

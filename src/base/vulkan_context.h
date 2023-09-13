@@ -37,10 +37,14 @@ class VulkanContext {
   void SetupDescriptorPool(VulkanDevice *device);
   void SetupDescriptorSetLayout(VulkanDevice *device);
   void SetupDescriptorSet(VulkanDevice *device);
+  void SetupRenderPass(VulkanDevice *device, VkFormat color_format, VkFormat depth_format);
+  void CreatePipelineCache();
+  void BuildPipelines();
 
   const VkPipelineVertexInputStateCreateInfo &BuildVertexInputState();
 
   VkInstance instance() const { return instance_; }
+  VkRenderPass renderPass() const { return renderPass_; }
 
   // helpers
   VkDescriptorBufferInfo CreateDescriptor(VulkanBuffer *buffer, VkDeviceSize size = VK_WHOLE_SIZE,
@@ -56,6 +60,9 @@ class VulkanContext {
   VkPipelineLayout PipelineLayout() { return pipelineLayout_; }
 
   const VulkanNode *GetVkNode(int handle) { return &vkNodeList[handle]; }
+  VkPipeline GetPipeline(int handle) { return pipelineList[handle]; }
+
+  void set_vulkan_device(VulkanDevice *device) { device_ = device; };
 
  private:
   VkInstance instance_{VK_NULL_HANDLE};
@@ -63,6 +70,10 @@ class VulkanContext {
   VkDescriptorSet descriptorSet_{VK_NULL_HANDLE};
   VkDescriptorSetLayout descriptorSetLayout_{VK_NULL_HANDLE};
   VkPipelineLayout pipelineLayout_{VK_NULL_HANDLE};
+  VkRenderPass renderPass_ = VK_NULL_HANDLE;
+  VulkanDevice *device_{nullptr};
+  VkPipelineCache pipelineCache_{VK_NULL_HANDLE};
+
   std::vector<std::string> supportedInstanceExtensions;
   /** @brief Set of device extensions to be enabled for this example (must be
    * set in the derived constructor) */
@@ -95,7 +106,9 @@ class VulkanContext {
   std::vector<VulkanNode> vkNodeList;
 
   VkResult CreateInstance(bool enableValidation);
-  VkPipelineShaderStageCreateInfo LoadShader(std::string fileName, VkShaderStageFlagBits stage, VulkanDevice* device);
-  bool LoadMaterial(VulkanNode *vkNode, const Material *mat, VulkanDevice* device);
+  VkPipelineShaderStageCreateInfo LoadShader(std::string fileName, VkShaderStageFlagBits stage, VulkanDevice *device);
+  bool LoadMaterial(VulkanNode *vkNode, const Material *mat, VulkanDevice *device);
+
+  // void BuildPipelines();
 };
 }  // namespace lvk

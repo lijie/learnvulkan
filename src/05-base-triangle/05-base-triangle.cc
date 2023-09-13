@@ -33,26 +33,14 @@ using lvk::VulkanApp;
 class TriangleApp : public VulkanApp {
  private:
   VulkanTexture *texture_{nullptr};
-
-  struct {
-    VkPipeline solid;
-  } pipelines;
-
-  // VkPipelineLayout pipelineLayout;
   VkDescriptorSet descriptorSet;
-  // VkDescriptorSetLayout descriptorSetLayout;
 
   VkClearColorValue defaultClearColor = {{0.025f, 0.025f, 0.025f, 1.0f}};
 
-  // std::array<PrimitiveMesh, 1> meshList;
-  // std::array<PrimitiveMeshVK, 1> vkmeshList;
   Scene scene;
-
-  // GLFWwindow *window_;
 
   void GenerateQuad();
   void SetupDescriptorSetLayout();
-  void PreparePipelines();
   void SetupDescriptorSet();
   void BuildCommandBuffers();
   void Draw();
@@ -91,25 +79,6 @@ void TriangleApp::GenerateQuad() {
              }};
 
   scene.AddNode(n1);
-}
-
-void TriangleApp::PreparePipelines() {
-  std::vector<VkPipelineColorBlendAttachmentState> colorBlendAttachmentStates;
-  colorBlendAttachmentStates.push_back(initializers::PipelineColorBlendAttachmentState(0xf, VK_FALSE));
-
-  VulkanPipelineBuilder()
-      .dynamicStates({VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR})
-      .primitiveTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
-      .polygonMode(VK_POLYGON_MODE_FILL)
-      .vertexInputState(context_->BuildVertexInputState())
-      .cullMode(VK_CULL_MODE_NONE)
-      .frontFace(VK_FRONT_FACE_COUNTER_CLOCKWISE)
-      .colorBlendAttachmentStates(colorBlendAttachmentStates)
-      .depthWriteEnable(true)
-      .depthCompareOp(VK_COMPARE_OP_LESS_OR_EQUAL)
-      .rasterizationSamples(VK_SAMPLE_COUNT_1_BIT)
-      .shaderStages(context_->GetVkNode(0)->shaderStages)
-      .build(device, pipelineCache, context_->PipelineLayout(), renderPass, &pipelines.solid, "05-GraphicPipline");
 }
 
 void TriangleApp::SetupDescriptorSet() {
@@ -156,7 +125,7 @@ void TriangleApp::BuildCommandBuffers() {
   clearValues[1].depthStencil = {1.0f, 0};
 
   VkRenderPassBeginInfo renderPassBeginInfo = initializers::RenderPassBeginInfo();
-  renderPassBeginInfo.renderPass = renderPass;
+  renderPassBeginInfo.renderPass = context_->renderPass();// renderPass;
   renderPassBeginInfo.renderArea.offset.x = 0;
   renderPassBeginInfo.renderArea.offset.y = 0;
   renderPassBeginInfo.renderArea.extent.width = width;
@@ -165,6 +134,7 @@ void TriangleApp::BuildCommandBuffers() {
   renderPassBeginInfo.pClearValues = clearValues;
 
   for (int32_t i = 0; i < drawCmdBuffers.size(); ++i) {
+    const auto &vkNode = context_->GetVkNode(0);
     // Set target frame buffer
     renderPassBeginInfo.framebuffer = frameBuffers[i];
 
@@ -181,9 +151,8 @@ void TriangleApp::BuildCommandBuffers() {
     uint32_t dynamic_offset = 0;
     vkCmdBindDescriptorSets(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, context_->PipelineLayout(), 0, 1,
                             &descriptorSet, 1, &dynamic_offset);
-    vkCmdBindPipeline(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines.solid);
+    vkCmdBindPipeline(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, context_->GetPipeline(vkNode->pipelineHandle));
 
-    const auto &vkNode = context_->GetVkNode(0);
     VkDeviceSize offsets[1] = {0};
     auto vkvb = vkNode->vkMesh->vertexBuffer->buffer();
     auto vkib = vkNode->vkMesh->indexBuffer->buffer();
@@ -204,7 +173,7 @@ void TriangleApp::Prepare() {
   VulkanApp::Prepare();
   GenerateQuad();
   context_->CreateVulkanScene(&scene, vulkanDevice);
-  PreparePipelines();
+  // PreparePipelines();
   SetupDescriptorSet();
   BuildCommandBuffers();
   prepared = true;

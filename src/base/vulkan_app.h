@@ -78,8 +78,8 @@ class VulkanApp {
     VkDeviceMemory mem;
     VkImageView view;
   } depthStencil;
-  VkRenderPass renderPass = VK_NULL_HANDLE;
-  VkPipelineCache pipelineCache;
+  // VkRenderPass renderPass = VK_NULL_HANDLE;
+  // VkPipelineCache pipelineCache;
   std::vector<VkFramebuffer> frameBuffers;
   // Active frame buffer index
   uint32_t currentBuffer = 0;
@@ -112,8 +112,8 @@ class VulkanApp {
   void CreateCommandBuffers();
   void CreateSynchronizationPrimitives();
   void SetupDepthStencil();
-  void SetupRenderPass();
-  void CreatePipelineCache();
+  // void SetupRenderPass();
+  // void CreatePipelineCache();
   void SetupFrameBuffer();
   virtual void Render() = 0;
   void NextFrame();
