@@ -55,38 +55,40 @@ class VulkanApp {
   VkPhysicalDeviceFeatures enabledFeatures{};
   void *deviceCreatepNextChain = nullptr;
   VkDevice device;
-  VkQueue queue;
+  // VkQueue queue;
   // Depth buffer format (selected during Vulkan initialization)
   VkFormat depthFormat;
-  VulkanSwapchain swapChain;
-  VkCommandPool cmdPool;
+  // VulkanSwapchain swapChain;
+  // VkCommandPool cmdPool;
   // Synchronization semaphores
+  #if 0
   struct {
     // Swap chain image presentation
     VkSemaphore presentComplete;
     // Command buffer submission and execution
     VkSemaphore renderComplete;
   } semaphores;
-  VkSubmitInfo submitInfo;
-  std::vector<VkCommandBuffer> drawCmdBuffers;
+  #endif
+  // VkSubmitInfo submitInfo;
+  // std::vector<VkCommandBuffer> drawCmdBuffers;
   /** @brief Pipeline stages used to wait at for graphics queue submissions */
-  VkPipelineStageFlags submitPipelineStages =
-      VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-  std::vector<VkFence> waitFences;
-  struct {
-    VkImage image;
-    VkDeviceMemory mem;
-    VkImageView view;
-  } depthStencil;
+  // VkPipelineStageFlags submitPipelineStages =
+  //    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+  // std::vector<VkFence> waitFences;
+  // struct {
+  //   VkImage image;
+  //   VkDeviceMemory mem;
+  //   VkImageView view;
+  // } depthStencil;
   // VkRenderPass renderPass = VK_NULL_HANDLE;
   // VkPipelineCache pipelineCache;
-  std::vector<VkFramebuffer> frameBuffers;
+  // std::vector<VkFramebuffer> frameBuffers;
   // Active frame buffer index
-  uint32_t currentBuffer = 0;
-  VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
+  // uint32_t currentBuffer = 0;
+  // VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
   bool prepared{false};
 
-  std::vector<VkShaderModule> shaderModules;
+  //std::vector<VkShaderModule> shaderModules;
 
   // win32 window
   // HWND window;
@@ -111,10 +113,10 @@ class VulkanApp {
   void CreateCommandPool();
   void CreateCommandBuffers();
   void CreateSynchronizationPrimitives();
-  void SetupDepthStencil();
+  // void SetupDepthStencil();
   // void SetupRenderPass();
   // void CreatePipelineCache();
-  void SetupFrameBuffer();
+  // void SetupFrameBuffer();
   virtual void Render() = 0;
   void NextFrame();
   void PrepareFrame();

@@ -16,9 +16,11 @@ std::vector<const char*> VulkanApp::args;
 
 bool VulkanApp::InitVulkan() {
   VkResult err;
+  VulkanContextOptions ctx_options;
 
   context_ = new VulkanContext();
   window_ = Window::NewWindow(WindowType::Glfw, width, height);
+  ctx_options.window = window_;
 
 #if defined(VK_USE_PLATFORM_ANDROID_KHR)
   vks::android::loadVulkanFunctions(instance);
@@ -106,10 +108,9 @@ bool VulkanApp::InitVulkan() {
     return false;
   }
   device = vulkanDevice->logicalDevice_;
-  context_->set_vulkan_device(vulkanDevice);
 
   // Get a graphics queue from the device
-  vkGetDeviceQueue(device, vulkanDevice->queueFamilyIndices_.graphics, 0, &queue);
+  // vkGetDeviceQueue(device, vulkanDevice->queueFamilyIndices_.graphics, 0, &queue);
 
   // Find a suitable depth and/or stencil format
   VkBool32 validFormat{false};
@@ -121,9 +122,13 @@ bool VulkanApp::InitVulkan() {
     validFormat = tools::GetSupportedDepthFormat(physicalDevice, &depthFormat);
   }
   assert(validFormat);
+  ctx_options.depthFormat = depthFormat;
 
-  swapChain.Connect(context_->instance(), physicalDevice, device);
+  context_->set_vulkan_device(vulkanDevice);
+  context_->InitWithOptions(ctx_options, physicalDevice);
 
+  // swapChain.Connect(context_->instance(), physicalDevice, device);
+#if 0
   // Create synchronization objects
   VkSemaphoreCreateInfo semaphoreCreateInfo = initializers::SemaphoreCreateInfo();
   // Create a semaphore used to synchronize image presentation
@@ -144,10 +149,11 @@ bool VulkanApp::InitVulkan() {
   submitInfo.pWaitSemaphores = &semaphores.presentComplete;
   submitInfo.signalSemaphoreCount = 1;
   submitInfo.pSignalSemaphores = &semaphores.renderComplete;
-
+#endif
   return true;
 }
 
+#if 0
 void VulkanApp::CreateCommandPool() {
   VkCommandPoolCreateInfo cmdPoolInfo = {};
   cmdPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -165,7 +171,9 @@ void VulkanApp::CreateCommandBuffers() {
 
   VK_CHECK_RESULT(vkAllocateCommandBuffers(device, &cmdBufAllocateInfo, drawCmdBuffers.data()));
 }
+#endif
 
+#if 0
 void VulkanApp::CreateSynchronizationPrimitives() {
   // Wait fences to sync command buffer access
   VkFenceCreateInfo fenceCreateInfo = initializers::FenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
@@ -174,7 +182,9 @@ void VulkanApp::CreateSynchronizationPrimitives() {
     VK_CHECK_RESULT(vkCreateFence(device, &fenceCreateInfo, nullptr, &fence));
   }
 }
+#endif
 
+#if 0
 void VulkanApp::SetupDepthStencil() {
   VkImageCreateInfo imageCI{};
   imageCI.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -215,6 +225,8 @@ void VulkanApp::SetupDepthStencil() {
   }
   VK_CHECK_RESULT(vkCreateImageView(device, &imageViewCI, nullptr, &depthStencil.view));
 }
+#endif
+
 
 #if 0
 void VulkanApp::SetupRenderPass() {
@@ -298,6 +310,7 @@ void VulkanApp::CreatePipelineCache() {
 }
 #endif
 
+#if 0
 void VulkanApp::SetupFrameBuffer() {
   VkImageView attachments[2];
 
@@ -321,6 +334,7 @@ void VulkanApp::SetupFrameBuffer() {
     VK_CHECK_RESULT(vkCreateFramebuffer(device, &frameBufferCreateInfo, nullptr, &frameBuffers[i]));
   }
 }
+#endif
 
 void VulkanApp::NextFrame() {
   auto tStart = std::chrono::high_resolution_clock::now();
@@ -388,6 +402,7 @@ void VulkanApp::RenderLoop() {
 
 std::string VulkanApp::GetShadersPath() const { return ""; }
 
+#if 0
 VkPipelineShaderStageCreateInfo VulkanApp::LoadShader(std::string fileName, VkShaderStageFlagBits stage) {
   VkPipelineShaderStageCreateInfo shaderStage = {};
   shaderStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -402,7 +417,9 @@ VkPipelineShaderStageCreateInfo VulkanApp::LoadShader(std::string fileName, VkSh
   shaderModules.push_back(shaderStage.module);
   return shaderStage;
 }
+#endif
 
+#if 0
 void VulkanApp::PrepareFrame() {
   // Acquire the next image from the swap chain
   VkResult result = swapChain.AcquireNextImage(semaphores.presentComplete, &currentBuffer);
@@ -418,7 +435,9 @@ void VulkanApp::PrepareFrame() {
     VK_CHECK_RESULT(result);
   }
 }
+#endif
 
+#if 0
 void VulkanApp::SubmitFrame() {
   VkResult result = swapChain.QueuePresent(queue, currentBuffer, semaphores.renderComplete);
   // Recreate the swapchain if it's no longer compatible with the surface
@@ -433,39 +452,16 @@ void VulkanApp::SubmitFrame() {
   }
   VK_CHECK_RESULT(vkQueueWaitIdle(queue));
 }
+#endif
 
 void VulkanApp::Prepare() {
-  InitSwapchain();
-  CreateCommandPool();
-  SetupSwapchain();
-  CreateCommandBuffers();
-  CreateSynchronizationPrimitives();
-  SetupDepthStencil();
-  context_->SetupRenderPass(vulkanDevice, swapChain.colorFormat_, depthFormat);
-  // SetupRenderPass();
-  // CreatePipelineCache();
-  SetupFrameBuffer();
-#if 0
-  settings.overlay = settings.overlay && (!benchmark.active);
-  if (settings.overlay) {
-    UIOverlay.device = vulkanDevice;
-    UIOverlay.queue = queue;
-    UIOverlay.shaders = {
-        loadShader(getShadersPath() + "base/uioverlay.vert.spv",
-                   VK_SHADER_STAGE_VERTEX_BIT),
-        loadShader(getShadersPath() + "base/uioverlay.frag.spv",
-                   VK_SHADER_STAGE_FRAGMENT_BIT),
-    };
-    UIOverlay.prepareResources();
-    UIOverlay.preparePipeline(pipelineCache, renderPass, swapChain.colorFormat,
-                              depthFormat);
-  }
-#endif
 }
 
+#if 0
 void VulkanApp::InitSwapchain() { swapChain.InitSurface(windowInstance, window_); }
 
 void VulkanApp::SetupSwapchain() { swapChain.Create(&width, &height, settings.vsync, settings.fullscreen); }
+#endif
 
 std::string VulkanApp::GetWindowTitle() {
   std::string device(deviceProperties.deviceName);

@@ -12,12 +12,14 @@
 #include "vulkan_debug.h"
 #include "vulkan_device.h"
 #include "vulkan_initializers.h"
-#include "vulkan_tools.h"
 #include "vulkan_pipelinebuilder.h"
+#include "vulkan_tools.h"
 
 #define VERTEX_BUFFER_BIND_ID 0
 
 namespace lvk {
+
+static VkClearColorValue defaultClearColor = {{0.025f, 0.025f, 0.025f, 1.0f}};
 
 VulkanContext::VulkanContext() { VK_CHECK_RESULT(CreateInstance(true)); }
 
@@ -30,9 +32,37 @@ VulkanContext::~VulkanContext() {
   }
 }
 
+void VulkanContext::InitWithOptions(const VulkanContextOptions& options, VkPhysicalDevice phy_device) {
+  options_ = options;
+
+  vkGetDeviceQueue(device_->device(), device_->queueFamilyIndices_.graphics, 0, &queue_);
+
+  swapChain_.Connect(instance_, phy_device, device_->device());
+
+  // Create synchronization objects
+  VkSemaphoreCreateInfo semaphoreCreateInfo = initializers::SemaphoreCreateInfo();
+  // Create a semaphore used to synchronize image presentation
+  // Ensures that the image is displayed before we start submitting new commands
+  // to the queue
+  VK_CHECK_RESULT(vkCreateSemaphore(device_->device(), &semaphoreCreateInfo, nullptr, &semaphores_.presentComplete));
+  // Create a semaphore used to synchronize command submission
+  // Ensures that the image is not presented until all commands have been
+  // submitted and executed
+  VK_CHECK_RESULT(vkCreateSemaphore(device_->device(), &semaphoreCreateInfo, nullptr, &semaphores_.renderComplete));
+
+  // Set up submit info structure
+  // Semaphores will stay the same during application lifetime
+  // Command buffer submission info is set by each example
+  submitInfo_ = initializers::SubmitInfo();
+  submitInfo_.pWaitDstStageMask = &submitPipelineStages_;
+  submitInfo_.waitSemaphoreCount = 1;
+  submitInfo_.pWaitSemaphores = &semaphores_.presentComplete;
+  submitInfo_.signalSemaphoreCount = 1;
+  submitInfo_.pSignalSemaphores = &semaphores_.renderComplete;
+}
+
 void VulkanContext::CreateVulkanScene(Scene* scene, VulkanDevice* device) {
-  VkQueue queue;
-  vkGetDeviceQueue(device->device(), device->queueFamilyIndices_.graphics, 0, &queue);
+  Prepare();
 
   vkNodeList.resize(scene->GetNodeCount());
   vkMeshList.resize(scene->GetNodeCount());
@@ -44,7 +74,7 @@ void VulkanContext::CreateVulkanScene(Scene* scene, VulkanDevice* device) {
 
     if (node->materialParamters.textureList.size() > 0) {
       auto texture_handle = node->materialParamters.textureList[0];
-      auto texture = new VulkanTexture(device, scene->GetResourceTexture(texture_handle)->path, queue);
+      auto texture = new VulkanTexture(device, scene->GetResourceTexture(texture_handle)->path, queue_);
       texture->LoadTexture();
       vkTextureList.push_back(texture);
       vknode.vkTexture = vkTextureList.back();
@@ -52,12 +82,14 @@ void VulkanContext::CreateVulkanScene(Scene* scene, VulkanDevice* device) {
     vknode.vkMesh = &vkMeshList[i];
 
     LoadMaterial(&vknode, scene->GetResourceMaterial(node->material), device);
+    vknode.pipelineHandle = FindOrCreatePipeline();
   }
 
   PrepareUniformBuffers(scene, device);
   SetupDescriptorSetLayout(device);
   SetupDescriptorPool(device);
   BuildPipelines();
+  SetupDescriptorSet();
 }
 
 void VulkanContext::PrepareUniformBuffers(Scene* scene, VulkanDevice* device) {
@@ -123,30 +155,6 @@ void VulkanContext::SetupDescriptorPool(VulkanDevice* device) {
       initializers::DescriptorPoolCreateInfo(static_cast<uint32_t>(pool_sizes.size()), pool_sizes.data(), 2);
 
   VK_CHECK_RESULT(vkCreateDescriptorPool(device->device(), &descriptor_pool_create_info, nullptr, &descriptorPool_));
-}
-
-void VulkanContext::SetupDescriptorSet(VulkanDevice* device) {
-  VkDescriptorSetAllocateInfo alloc_info =
-      initializers::DescriptorSetAllocateInfo(descriptorPool_, &descriptorSetLayout_, 1);
-
-  VK_CHECK_RESULT(vkAllocateDescriptorSets(device->device(), &alloc_info, &descriptorSet_));
-
-  VkDescriptorBufferInfo view_buffer_descriptor = CreateDescriptor(&uniformBuffers_.view);
-
-  // Pass the  actual dynamic alignment as the descriptor's size
-  VkDescriptorBufferInfo dynamic_buffer_descriptor =
-      CreateDescriptor(&uniformBuffers_.dynamic, uniformBuffers_.dynamicAlignment);
-
-  std::vector<VkWriteDescriptorSet> write_descriptor_sets = {
-      // Binding 0 : Projection/View matrix uniform buffer
-      initializers::WriteDescriptorSet(descriptorSet_, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &view_buffer_descriptor),
-      // Binding 1 : Instance matrix as dynamic uniform buffer
-      initializers::WriteDescriptorSet(descriptorSet_, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1,
-                                       &dynamic_buffer_descriptor),
-  };
-
-  vkUpdateDescriptorSets(device->device(), static_cast<uint32_t>(write_descriptor_sets.size()),
-                         write_descriptor_sets.data(), 0, NULL);
 }
 
 const VkPipelineVertexInputStateCreateInfo& VulkanContext::BuildVertexInputState() {
@@ -344,10 +352,13 @@ bool VulkanContext::LoadMaterial(VulkanNode* vkNode, const Material* mat, Vulkan
   return true;
 }
 
-void VulkanContext::SetupRenderPass(VulkanDevice *device, VkFormat color_format, VkFormat depth_format) {
+void VulkanContext::SetupRenderPass() {
+  VkFormat color_format = swapChain_.colorFormat_;
+  VkFormat depth_format = options_.depthFormat;
+
   std::array<VkAttachmentDescription, 2> attachments = {};
   // Color attachment
-  attachments[0].format = color_format; //swapChain.colorFormat_;
+  attachments[0].format = color_format;  // swapChain.colorFormat_;
   attachments[0].samples = VK_SAMPLE_COUNT_1_BIT;
   attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
   attachments[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -356,7 +367,7 @@ void VulkanContext::SetupRenderPass(VulkanDevice *device, VkFormat color_format,
   attachments[0].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
   attachments[0].finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
   // Depth attachment
-  attachments[1].format = depth_format; //depthFormat;
+  attachments[1].format = depth_format;  // depthFormat;
   attachments[1].samples = VK_SAMPLE_COUNT_1_BIT;
   attachments[1].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
   attachments[1].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -413,7 +424,7 @@ void VulkanContext::SetupRenderPass(VulkanDevice *device, VkFormat color_format,
   renderPassInfo.dependencyCount = static_cast<uint32_t>(dependencies.size());
   renderPassInfo.pDependencies = dependencies.data();
 
-  VK_CHECK_RESULT(vkCreateRenderPass(device->device(), &renderPassInfo, nullptr, &renderPass_));
+  VK_CHECK_RESULT(vkCreateRenderPass(device_->device(), &renderPassInfo, nullptr, &renderPass_));
 }
 
 void VulkanContext::CreatePipelineCache() {
@@ -446,4 +457,245 @@ void VulkanContext::BuildPipelines() {
       .build(device_->device(), pipelineCache_, PipelineLayout(), renderPass_, &pipelineList[0], "05-GraphicPipline");
 }
 
+void VulkanContext::SetupDescriptorSet() {
+  // todo:
+  descriptorSetList.resize(1);
+
+  VkDescriptorSetAllocateInfo allocInfo =
+      initializers::DescriptorSetAllocateInfo(descriptorPool_, &descriptorSetLayout_, 1);
+
+  VK_CHECK_RESULT(vkAllocateDescriptorSets(device_->device(), &allocInfo, &descriptorSetList[0]));
+
+  // Setup a descriptor image info for the current texture to be used as a
+  // combined image sampler
+  VkDescriptorImageInfo textureDescriptor =
+      GetVkNode(0)->vkTexture->GetDescriptorImageInfo();  // texture_->GetDescriptorImageInfo();
+
+  auto descriptor = CreateDescriptor2();
+
+  std::vector<VkWriteDescriptorSet> writeDescriptorSets = {
+    // Binding 0 : Vertex shader uniform buffer
+    initializers::WriteDescriptorSet(descriptorSetList[0], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1, &descriptor),
+  // &uniformBufferVS.descriptor_),
+// Binding 1 : Fragment shader texture sampler
+//	Fragment shader: layout (binding = 1) uniform sampler2D
+// samplerColor;
+#if 1
+    initializers::WriteDescriptorSet(descriptorSetList[0],
+                                     VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,  // The descriptor set will
+                                                                                 // use a combined image
+                                                                                 // sampler (sampler and
+                                                                                 // image could be split)
+                                     2,                                          // Shader binding point 1
+                                     &textureDescriptor)  // Pointer to the descriptor image for our
+                                                          // texture
+#endif
+  };
+
+  vkUpdateDescriptorSets(device_->device(), static_cast<uint32_t>(writeDescriptorSets.size()),
+                         writeDescriptorSets.data(), 0, NULL);
+}
+
+void VulkanContext::InitSwapchain() { swapChain_.InitSurface(NULL, options_.window); }
+
+void VulkanContext::SetupSwapchain() { swapChain_.Create(&width, &height, false, false); }
+
+void VulkanContext::SetupDepthStencil() {
+  VkImageCreateInfo imageCI{};
+  imageCI.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+  imageCI.imageType = VK_IMAGE_TYPE_2D;
+  imageCI.format = options_.depthFormat;
+  imageCI.extent = {width, height, 1};
+  imageCI.mipLevels = 1;
+  imageCI.arrayLayers = 1;
+  imageCI.samples = VK_SAMPLE_COUNT_1_BIT;
+  imageCI.tiling = VK_IMAGE_TILING_OPTIMAL;
+  imageCI.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+
+  VK_CHECK_RESULT(vkCreateImage(device_->device(), &imageCI, nullptr, &depthStencil_.image));
+  VkMemoryRequirements memReqs{};
+  vkGetImageMemoryRequirements(device_->device(), depthStencil_.image, &memReqs);
+
+  VkMemoryAllocateInfo memAllloc{};
+  memAllloc.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+  memAllloc.allocationSize = memReqs.size;
+  memAllloc.memoryTypeIndex = device_->GetMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+  VK_CHECK_RESULT(vkAllocateMemory(device_->device(), &memAllloc, nullptr, &depthStencil_.mem));
+  VK_CHECK_RESULT(vkBindImageMemory(device_->device(), depthStencil_.image, depthStencil_.mem, 0));
+
+  VkImageViewCreateInfo imageViewCI{};
+  imageViewCI.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+  imageViewCI.viewType = VK_IMAGE_VIEW_TYPE_2D;
+  imageViewCI.image = depthStencil_.image;
+  imageViewCI.format = options_.depthFormat;
+  imageViewCI.subresourceRange.baseMipLevel = 0;
+  imageViewCI.subresourceRange.levelCount = 1;
+  imageViewCI.subresourceRange.baseArrayLayer = 0;
+  imageViewCI.subresourceRange.layerCount = 1;
+  imageViewCI.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+  // Stencil aspect should only be set on depth + stencil formats
+  // (VK_FORMAT_D16_UNORM_S8_UINT..VK_FORMAT_D32_SFLOAT_S8_UINT
+  if (options_.depthFormat >= VK_FORMAT_D16_UNORM_S8_UINT) {
+    imageViewCI.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+  }
+  VK_CHECK_RESULT(vkCreateImageView(device_->device(), &imageViewCI, nullptr, &depthStencil_.view));
+}
+
+void VulkanContext::SetupFrameBuffer() {
+  VkImageView attachments[2];
+
+  // Depth/Stencil attachment is the same for all frame buffers
+  attachments[1] = depthStencil_.view;
+
+  VkFramebufferCreateInfo frameBufferCreateInfo = {};
+  frameBufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+  frameBufferCreateInfo.pNext = NULL;
+  frameBufferCreateInfo.renderPass = renderPass();  // renderPass;
+  frameBufferCreateInfo.attachmentCount = 2;
+  frameBufferCreateInfo.pAttachments = attachments;
+  frameBufferCreateInfo.width = width;
+  frameBufferCreateInfo.height = height;
+  frameBufferCreateInfo.layers = 1;
+
+  // Create frame buffers for every swap chain image
+  frameBuffers_.resize(swapChain_.imageCount_);
+  for (uint32_t i = 0; i < frameBuffers_.size(); i++) {
+    attachments[0] = swapChain_.buffers_[i].view;
+    VK_CHECK_RESULT(vkCreateFramebuffer(device_->device(), &frameBufferCreateInfo, nullptr, &frameBuffers_[i]));
+  }
+}
+
+void VulkanContext::CreateCommandPool() {
+  VkCommandPoolCreateInfo cmdPoolInfo = {};
+  cmdPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+  cmdPoolInfo.queueFamilyIndex = swapChain_.queueNodeIndex();
+  cmdPoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+  VK_CHECK_RESULT(vkCreateCommandPool(device_->device(), &cmdPoolInfo, nullptr, &cmdPool_));
+}
+
+void VulkanContext::CreateCommandBuffers() {
+  // Create one command buffer for each swap chain image and reuse for rendering
+  drawCmdBuffers_.resize(swapChain_.imageCount());
+
+  VkCommandBufferAllocateInfo cmdBufAllocateInfo = initializers::CommandBufferAllocateInfo(
+      cmdPool_, VK_COMMAND_BUFFER_LEVEL_PRIMARY, static_cast<uint32_t>(drawCmdBuffers_.size()));
+
+  VK_CHECK_RESULT(vkAllocateCommandBuffers(device_->device(), &cmdBufAllocateInfo, drawCmdBuffers_.data()));
+}
+
+void VulkanContext::BuildCommandBuffers(Scene* scene) {
+  VkCommandBufferBeginInfo cmdBufInfo = initializers::CommandBufferBeginInfo();
+
+  VkClearValue clearValues[2];
+  clearValues[0].color = defaultClearColor;
+  clearValues[1].depthStencil = {1.0f, 0};
+
+  VkRenderPassBeginInfo renderPassBeginInfo = initializers::RenderPassBeginInfo();
+  renderPassBeginInfo.renderPass = renderPass();  // renderPass;
+  renderPassBeginInfo.renderArea.offset.x = 0;
+  renderPassBeginInfo.renderArea.offset.y = 0;
+  renderPassBeginInfo.renderArea.extent.width = width;
+  renderPassBeginInfo.renderArea.extent.height = height;
+  renderPassBeginInfo.clearValueCount = 2;
+  renderPassBeginInfo.pClearValues = clearValues;
+
+  for (int32_t i = 0; i < drawCmdBuffers_.size(); ++i) {
+    const auto& vkNode = GetVkNode(0);
+    // Set target frame buffer
+    renderPassBeginInfo.framebuffer = frameBuffers_[i];
+
+    VK_CHECK_RESULT(vkBeginCommandBuffer(drawCmdBuffers_[i], &cmdBufInfo));
+
+    vkCmdBeginRenderPass(drawCmdBuffers_[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+    VkViewport viewport = initializers::Viewport((float)width, (float)height, 0.0f, 1.0f);
+    vkCmdSetViewport(drawCmdBuffers_[i], 0, 1, &viewport);
+
+    VkRect2D scissor = initializers::Rect2D(width, height, 0, 0);
+    vkCmdSetScissor(drawCmdBuffers_[i], 0, 1, &scissor);
+
+    uint32_t dynamic_offset = 0;
+    vkCmdBindDescriptorSets(drawCmdBuffers_[i], VK_PIPELINE_BIND_POINT_GRAPHICS, PipelineLayout(), 0, 1,
+                            GetDescriptorSetP(vkNode->descriptorSetHandle), 1, &dynamic_offset);
+    vkCmdBindPipeline(drawCmdBuffers_[i], VK_PIPELINE_BIND_POINT_GRAPHICS, GetPipeline(vkNode->pipelineHandle));
+
+    VkDeviceSize offsets[1] = {0};
+    auto vkvb = vkNode->vkMesh->vertexBuffer->buffer();
+    auto vkib = vkNode->vkMesh->indexBuffer->buffer();
+    vkCmdBindVertexBuffers(drawCmdBuffers_[i], VERTEX_BUFFER_BIND_ID, 1, &vkvb, offsets);
+    vkCmdBindIndexBuffer(drawCmdBuffers_[i], vkib, 0, VK_INDEX_TYPE_UINT32);
+
+    vkCmdDrawIndexed(drawCmdBuffers_[i], vkNode->vkMesh->indexCount, 1, 0, 0, 0);
+
+    // drawUI(drawCmdBuffers[i]);
+
+    vkCmdEndRenderPass(drawCmdBuffers_[i]);
+
+    VK_CHECK_RESULT(vkEndCommandBuffer(drawCmdBuffers_[i]));
+  }
+}
+
+void VulkanContext::CreateSynchronizationPrimitives() {
+  // Wait fences to sync command buffer access
+  VkFenceCreateInfo fenceCreateInfo = initializers::FenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
+  waitFences_.resize(drawCmdBuffers_.size());
+  for (auto& fence : waitFences_) {
+    VK_CHECK_RESULT(vkCreateFence(device_->device(), &fenceCreateInfo, nullptr, &fence));
+  }
+}
+
+void VulkanContext::PrepareFrame() {
+  // Acquire the next image from the swap chain
+  VkResult result = swapChain_.AcquireNextImage(semaphores_.presentComplete, &currentBuffer_);
+  // Recreate the swapchain if it's no longer compatible with the surface
+  // (OUT_OF_DATE) SRS - If no longer optimal (VK_SUBOPTIMAL_KHR), wait until
+  // submitFrame() in case number of swapchain images will change on resize
+  if ((result == VK_ERROR_OUT_OF_DATE_KHR) || (result == VK_SUBOPTIMAL_KHR)) {
+    if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+      // windowResize();
+    }
+    return;
+  } else {
+    VK_CHECK_RESULT(result);
+  }
+}
+
+void VulkanContext::SubmitFrame() {
+  VkResult result = swapChain_.QueuePresent(queue_, currentBuffer_, semaphores_.renderComplete);
+  // Recreate the swapchain if it's no longer compatible with the surface
+  // (OUT_OF_DATE) or no longer optimal for presentation (SUBOPTIMAL)
+  if ((result == VK_ERROR_OUT_OF_DATE_KHR) || (result == VK_SUBOPTIMAL_KHR)) {
+    // windowResize();
+    if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+      return;
+    }
+  } else {
+    VK_CHECK_RESULT(result);
+  }
+  VK_CHECK_RESULT(vkQueueWaitIdle(queue_));
+}
+
+void VulkanContext::Draw() {
+  PrepareFrame();
+
+  // Command buffer to be submitted to the queue
+  submitInfo_.commandBufferCount = 1;
+  submitInfo_.pCommandBuffers = &drawCmdBuffers_[currentBuffer_];
+
+  // Submit to queue
+  VK_CHECK_RESULT(vkQueueSubmit(queue_, 1, &submitInfo_, VK_NULL_HANDLE));
+
+  SubmitFrame();
+}
+
+void VulkanContext::Prepare() {
+  InitSwapchain();
+  CreateCommandPool();
+  SetupSwapchain();
+  CreateCommandBuffers();
+  CreateSynchronizationPrimitives();
+  SetupDepthStencil();
+  SetupRenderPass();
+  SetupFrameBuffer();
+}
 }  // namespace lvk

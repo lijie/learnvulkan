@@ -15,6 +15,7 @@ class Window;
 
 class VulkanSwapchain {
   friend class VulkanApp;
+  friend class VulkanContext;
 
  private:
   VkInstance instance_;
