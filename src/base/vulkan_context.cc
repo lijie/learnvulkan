@@ -75,12 +75,16 @@ void VulkanContext::CreateVulkanScene(Scene* scene, VulkanDevice* device) {
     vkMeshList[i].CreateBuffer(scene->GetResourceMesh(node->mesh), device);
     vkMeshList[i].indexCount = scene->GetResourceMesh(node->mesh)->indices.size();
 
+    std::cout << std::format("VulkanScene: CreateMessBuffer,NodeMesh:{},vkMesh:{}\n", node->mesh, i);
+
     if (node->materialParamters.textureList.size() > 0) {
       auto texture_handle = node->materialParamters.textureList[0];
       auto texture = new VulkanTexture(device, scene->GetResourceTexture(texture_handle)->path, queue_);
       texture->LoadTexture();
       vkTextureList.push_back(texture);
       vknode.vkTexture = vkTextureList.back();
+      vknode.vkTextureHandle = vkTextureList.size() - 1;
+      std::cout << std::format("VulkanScene: LoadTexture,vkTextureHandle:{}\n", vknode.vkTextureHandle);
     }
     vknode.vkMesh = &vkMeshList[i];
 
@@ -92,7 +96,11 @@ void VulkanContext::CreateVulkanScene(Scene* scene, VulkanDevice* device) {
   SetupDescriptorSetLayout(device);
   SetupDescriptorPool(device);
   BuildPipelines();
-  SetupDescriptorSet();
+
+  for (int i = 0; i < vkNodeList.size(); i++) {
+    FindOrCreateDescriptorSet(&vkNodeList[i]);
+  }
+  // SetupDescriptorSet();
 }
 
 void VulkanContext::PrepareUniformBuffers(Scene* scene, VulkanDevice* device) {
@@ -460,31 +468,33 @@ void VulkanContext::BuildPipelines() {
       .build(device_->device(), pipelineCache_, PipelineLayout(), renderPass_, &pipelineList[0], "05-GraphicPipline");
 }
 
-void VulkanContext::SetupDescriptorSet() {
+VkDescriptorSet VulkanContext::AllocDescriptorSet(VulkanNode* vkNode) {
   // todo:
-  descriptorSetList.resize(1);
+  // descriptorSetList.resize(1);
+  std::cout << std::format("AllocDescriptorSet for vkNode: {:010x}\n", (uintptr_t)vkNode);
 
   VkDescriptorSetAllocateInfo allocInfo =
       initializers::DescriptorSetAllocateInfo(descriptorPool_, &descriptorSetLayout_, 1);
 
-  VK_CHECK_RESULT(vkAllocateDescriptorSets(device_->device(), &allocInfo, &descriptorSetList[0]));
+  VkDescriptorSet descriptor_set{VK_NULL_HANDLE};
+  VK_CHECK_RESULT(vkAllocateDescriptorSets(device_->device(), &allocInfo, &descriptor_set));
 
   // Setup a descriptor image info for the current texture to be used as a
   // combined image sampler
   VkDescriptorImageInfo textureDescriptor =
-      GetVkNode(0)->vkTexture->GetDescriptorImageInfo();  // texture_->GetDescriptorImageInfo();
+      vkNode->vkTexture->GetDescriptorImageInfo();  // texture_->GetDescriptorImageInfo();
 
   auto descriptor = CreateDescriptor2();
 
   std::vector<VkWriteDescriptorSet> writeDescriptorSets = {
     // Binding 0 : Vertex shader uniform buffer
-    initializers::WriteDescriptorSet(descriptorSetList[0], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1, &descriptor),
+    initializers::WriteDescriptorSet(descriptor_set, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1, &descriptor),
   // &uniformBufferVS.descriptor_),
 // Binding 1 : Fragment shader texture sampler
 //	Fragment shader: layout (binding = 1) uniform sampler2D
 // samplerColor;
 #if 1
-    initializers::WriteDescriptorSet(descriptorSetList[0],
+    initializers::WriteDescriptorSet(descriptor_set,
                                      VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,  // The descriptor set will
                                                                                  // use a combined image
                                                                                  // sampler (sampler and
@@ -497,6 +507,21 @@ void VulkanContext::SetupDescriptorSet() {
 
   vkUpdateDescriptorSets(device_->device(), static_cast<uint32_t>(writeDescriptorSets.size()),
                          writeDescriptorSets.data(), 0, NULL);
+
+  // save to cache
+  DescriptorSetKey key((void*)&uniformBuffers_, vkNode->vkTextureHandle);
+  descriptorSetCache_[key] = descriptor_set;
+  return descriptor_set;
+}
+
+void VulkanContext::FindOrCreateDescriptorSet(VulkanNode* vkNode) {
+  DescriptorSetKey key((void*)&uniformBuffers_, vkNode->vkTextureHandle);
+  auto iter = descriptorSetCache_.find(key);
+  if (iter == descriptorSetCache_.end()) {
+    vkNode->descriptorSet = AllocDescriptorSet(vkNode);
+  } else {
+    vkNode->descriptorSet = iter->second;
+  }
 }
 
 void VulkanContext::InitSwapchain() { swapChain_.InitSurface(NULL, options_.window); }
@@ -632,7 +657,7 @@ void VulkanContext::BuildCommandBuffers(Scene* scene) {
 
       uint32_t dynamic_offset = node_index * uniformBuffers_.dynamicAlignment;
       vkCmdBindDescriptorSets(drawCmdBuffers_[i], VK_PIPELINE_BIND_POINT_GRAPHICS, PipelineLayout(), 0, 1,
-                              GetDescriptorSetP(vkNode->descriptorSetHandle), 1, &dynamic_offset);
+                              &vkn->descriptorSet, 1, &dynamic_offset);
       vkCmdDrawIndexed(drawCmdBuffers_[i], vkn->vkMesh->indexCount, 1, 0, 0, 0);
     }
 

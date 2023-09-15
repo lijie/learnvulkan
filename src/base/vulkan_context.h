@@ -1,7 +1,9 @@
 #pragma once
 
 #include <array>
+#include <map>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "primitives.h"
@@ -26,10 +28,36 @@ struct VulkanContextOptions {
 struct VulkanNode {
   PrimitiveMeshVK *vkMesh{nullptr};
   VulkanTexture *vkTexture{nullptr};
+  int vkTextureHandle{0};
   // alias shaders
   std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
   int pipelineHandle{0};
-  int descriptorSetHandle{0};
+  // int descriptorSetHandle{0};
+  VkDescriptorSet descriptorSet{VK_NULL_HANDLE};
+};
+
+// 如果使用不同的 unitofrm 或者不同的 texture,
+// 则需要创建新的 DescriptorSet
+struct DescriptorSetKey {
+  DescriptorSetKey() {}
+  DescriptorSetKey(void *ptr, int handle) : uniformBufferPtr(ptr), textureHandle(handle) {}
+  void *uniformBufferPtr;
+  int textureHandle;
+
+  bool operator==(const DescriptorSetKey &other) const {
+    if (this->uniformBufferPtr == other.uniformBufferPtr && this->textureHandle == other.textureHandle)
+      return true;
+    else
+      return false;
+  }
+
+  struct HashFunction {
+    size_t operator()(const DescriptorSetKey &key) const {
+      size_t rowHash = std::hash<void *>()(key.uniformBufferPtr);
+      size_t colHash = std::hash<int>()(key.textureHandle) << 1;
+      return rowHash ^ colHash;
+    }
+  };
 };
 
 class VulkanContext {
@@ -48,7 +76,7 @@ class VulkanContext {
   void UpdateUniformBuffers(Scene *scene);
   void SetupDescriptorPool(VulkanDevice *device);
   void SetupDescriptorSetLayout(VulkanDevice *device);
-  void SetupDescriptorSet();
+  VkDescriptorSet AllocDescriptorSet(VulkanNode *vkNode);
   void SetupRenderPass();
   void CreatePipelineCache();
   void BuildPipelines();
@@ -90,7 +118,6 @@ class VulkanContext {
 
   const VulkanNode *GetVkNode(int handle) { return &vkNodeList[handle]; }
   VkPipeline GetPipeline(int handle) { return pipelineList[handle]; }
-  VkDescriptorSet *GetDescriptorSetP(int handle) { return &descriptorSetList[handle]; }
 
   void set_vulkan_device(VulkanDevice *device) { device_ = device; };
 
@@ -158,16 +185,21 @@ class VulkanContext {
   } vertexInputState_;
 
   std::vector<VkPipeline> pipelineList;
-  std::vector<VkDescriptorSet> descriptorSetList;
+  // std::vector<VkDescriptorSet> descriptorSetList;
 
   std::vector<VulkanTexture *> vkTextureList;
   std::vector<PrimitiveMeshVK> vkMeshList;
   std::vector<VulkanNode> vkNodeList;
 
+  // caches
+  // std::map<DescriptorSetKey, VkDescriptorSet> descriptorSetCache_;
+  std::unordered_map<DescriptorSetKey, VkDescriptorSet, DescriptorSetKey::HashFunction> descriptorSetCache_;
+
   VkResult CreateInstance(bool enableValidation);
   VkPipelineShaderStageCreateInfo LoadShader(std::string fileName, VkShaderStageFlagBits stage, VulkanDevice *device);
   bool LoadMaterial(VulkanNode *vkNode, const Material *mat, VulkanDevice *device);
   int FindOrCreatePipeline() { return 0; }
+  void FindOrCreateDescriptorSet(VulkanNode *vkNode);
   // void BuildPipelines();
 };
 }  // namespace lvk

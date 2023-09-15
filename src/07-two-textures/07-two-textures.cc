@@ -8,7 +8,7 @@
 namespace lvk {
 using lvk::VulkanApp;
 
-class TwoCubesApp : public VulkanApp {
+class TwoTexturesApp : public VulkanApp {
  private:
   Scene scene;
 
@@ -19,18 +19,19 @@ class TwoCubesApp : public VulkanApp {
   virtual void Prepare() override;
 };
 
-void TwoCubesApp::InitScene() {
+void TwoTexturesApp::InitScene() {
   // prepare resource
   scene.meshList = {
       primitive::cube(),
   };
   scene.textureList = {
       {"../assets/texture.jpg"},
+      {"../assets/mutou.png"},
   };
   scene.materialList = {
       {
-          "06-vert.spv",
-          "06-frag.spv",
+          "07-vert.spv",
+          "07-frag.spv",
       },
   };
 
@@ -56,14 +57,14 @@ void TwoCubesApp::InitScene() {
              .mesh = 0,
              .material = 0,
              .materialParamters{
-                 .textureList{0},
+                 .textureList{1},
              }};
 
   scene.AddNode(n1);
   scene.AddNode(n2);
 }
 
-void TwoCubesApp::Prepare() {
+void TwoTexturesApp::Prepare() {
   VulkanApp::Prepare();
   InitScene();
 
@@ -72,13 +73,13 @@ void TwoCubesApp::Prepare() {
   prepared = true;
 }
 
-void TwoCubesApp::Render() {
+void TwoTexturesApp::Render() {
   if (!prepared) return;
   context_->Draw();
 }
 }  // namespace lvk
 
-using lvk::TwoCubesApp;
+using lvk::TwoTexturesApp;
 using lvk::VulkanApp;
 
 static VulkanApp *vulkanApp{nullptr};
@@ -87,7 +88,7 @@ int main() {
   for (int32_t i = 0; i < __argc; i++) {
     VulkanApp::args.push_back(__argv[i]);
   };
-  vulkanApp = new TwoCubesApp();
+  vulkanApp = new TwoTexturesApp();
   vulkanApp->InitVulkan();
   // vulkanApp->SetupWindow(hInstance, WndProc);
   vulkanApp->Prepare();

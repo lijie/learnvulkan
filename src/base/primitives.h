@@ -2,6 +2,7 @@
 
 #include <vector>
 
+#define GLM_DEPTH_ZERO_TO_ONE
 #define GLM_FORCE_RADIANS
 #include "glm/ext/matrix_float4x4.hpp"
 #include "glm/ext/matrix_transform.hpp"
