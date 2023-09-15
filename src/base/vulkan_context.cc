@@ -2,6 +2,7 @@
 
 #include <corecrt_malloc.h>
 
+#include <format>
 #include <iostream>
 #include <vector>
 
@@ -64,13 +65,15 @@ void VulkanContext::InitWithOptions(const VulkanContextOptions& options, VkPhysi
 void VulkanContext::CreateVulkanScene(Scene* scene, VulkanDevice* device) {
   Prepare();
 
+  std::cout << std::format("VulkanScene: Total Node: {}\n", scene->GetNodeCount());
+
   vkNodeList.resize(scene->GetNodeCount());
   vkMeshList.resize(scene->GetNodeCount());
   for (int i = 0; i < scene->GetNodeCount(); i++) {
     const auto& node = scene->GetNode(i);
     auto& vknode = vkNodeList[i];
-    vkMeshList[i].CreateBuffer(scene->GetResourceMesh(i), device);
-    vkMeshList[i].indexCount = scene->GetResourceMesh(i)->indices.size();
+    vkMeshList[i].CreateBuffer(scene->GetResourceMesh(node->mesh), device);
+    vkMeshList[i].indexCount = scene->GetResourceMesh(node->mesh)->indices.size();
 
     if (node->materialParamters.textureList.size() > 0) {
       auto texture_handle = node->materialParamters.textureList[0];
@@ -614,18 +617,32 @@ void VulkanContext::BuildCommandBuffers(Scene* scene) {
     VkRect2D scissor = initializers::Rect2D(width, height, 0, 0);
     vkCmdSetScissor(drawCmdBuffers_[i], 0, 1, &scissor);
 
-    uint32_t dynamic_offset = 0;
-    vkCmdBindDescriptorSets(drawCmdBuffers_[i], VK_PIPELINE_BIND_POINT_GRAPHICS, PipelineLayout(), 0, 1,
-                            GetDescriptorSetP(vkNode->descriptorSetHandle), 1, &dynamic_offset);
+    // uint32_t dynamic_offset = 0;
+    // vkCmdBindDescriptorSets(drawCmdBuffers_[i], VK_PIPELINE_BIND_POINT_GRAPHICS, PipelineLayout(), 0, 1,
+    //                        GetDescriptorSetP(vkNode->descriptorSetHandle), 1, &dynamic_offset);
     vkCmdBindPipeline(drawCmdBuffers_[i], VK_PIPELINE_BIND_POINT_GRAPHICS, GetPipeline(vkNode->pipelineHandle));
 
     VkDeviceSize offsets[1] = {0};
+    for (auto node_index = 0; node_index < vkNodeList.size(); node_index++) {
+      const auto& vkn = &vkNodeList[node_index];
+      auto vkvb = vkn->vkMesh->vertexBuffer->buffer();
+      auto vkib = vkn->vkMesh->indexBuffer->buffer();
+      vkCmdBindVertexBuffers(drawCmdBuffers_[i], VERTEX_BUFFER_BIND_ID, 1, &vkvb, offsets);
+      vkCmdBindIndexBuffer(drawCmdBuffers_[i], vkib, 0, VK_INDEX_TYPE_UINT32);
+
+      uint32_t dynamic_offset = node_index * uniformBuffers_.dynamicAlignment;
+      vkCmdBindDescriptorSets(drawCmdBuffers_[i], VK_PIPELINE_BIND_POINT_GRAPHICS, PipelineLayout(), 0, 1,
+                              GetDescriptorSetP(vkNode->descriptorSetHandle), 1, &dynamic_offset);
+      vkCmdDrawIndexed(drawCmdBuffers_[i], vkn->vkMesh->indexCount, 1, 0, 0, 0);
+    }
+
+#if 0
     auto vkvb = vkNode->vkMesh->vertexBuffer->buffer();
     auto vkib = vkNode->vkMesh->indexBuffer->buffer();
     vkCmdBindVertexBuffers(drawCmdBuffers_[i], VERTEX_BUFFER_BIND_ID, 1, &vkvb, offsets);
     vkCmdBindIndexBuffer(drawCmdBuffers_[i], vkib, 0, VK_INDEX_TYPE_UINT32);
-
     vkCmdDrawIndexed(drawCmdBuffers_[i], vkNode->vkMesh->indexCount, 1, 0, 0, 0);
+#endif
 
     // drawUI(drawCmdBuffers[i]);
 

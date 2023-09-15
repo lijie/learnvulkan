@@ -19,6 +19,7 @@ void Texture::Free() { stbi_image_free(data); }
 
 Scene::Scene() {
   cameraMatrix_.proj = glm::perspective(glm::radians(45.0f), 1280.0f / 720.0f, 0.1f, 10.0f);
+  cameraMatrix_.proj[1][1] *= -1;
   cameraMatrix_.view =
       glm::lookAt(glm::vec3(0.0f, 0.0f, 4.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 }

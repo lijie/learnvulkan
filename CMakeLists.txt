@@ -69,5 +69,5 @@ add_vulkan_target(02-vertex-buffer)
 add_vulkan_target(03-uniform-buffer)
 add_vulkan_target(04-texture)
 add_vulkan_target(05-base-triangle)
-add_win32_vulkan_target(06-depth-buffer)
+add_vulkan_target(06-two-cubes)
 

@@ -2,6 +2,7 @@
 
 #include <vector>
 
+#define GLM_FORCE_RADIANS
 #include "glm/ext/matrix_float4x4.hpp"
 #include "glm/ext/matrix_transform.hpp"
 #include "vertex_data.h"
@@ -44,5 +45,6 @@ namespace primitive_helpers {
 
 namespace primitive {
 PrimitiveMesh quad();
+PrimitiveMesh cube(float width = 1, float height = 1, float depth = 1);
 }
 }  // namespace lvk
