@@ -15,7 +15,7 @@ class TriangleApp : public VulkanApp {
   void InitScene();
 
  public:
-  virtual void Render() override;
+  virtual void Render(double delta_time) override;
   virtual void Prepare() override;
 };
 
@@ -59,9 +59,9 @@ void TriangleApp::Prepare() {
   prepared = true;
 }
 
-void TriangleApp::Render() {
+void TriangleApp::Render(double delta_time) {
   if (!prepared) return;
-    context_->Draw();
+    context_->Draw(&scene);
 }
 }  // namespace lvk
 

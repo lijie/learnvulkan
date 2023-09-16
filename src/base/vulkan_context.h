@@ -94,7 +94,7 @@ class VulkanContext {
 
   void PrepareFrame();
   void SubmitFrame();
-  void Draw();
+  void Draw(Scene *scene);
 
   void Prepare();
 

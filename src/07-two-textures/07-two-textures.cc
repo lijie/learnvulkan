@@ -15,7 +15,7 @@ class TwoTexturesApp : public VulkanApp {
   void InitScene();
 
  public:
-  virtual void Render() override;
+  virtual void Render(double delta_time) override;
   virtual void Prepare() override;
 };
 
@@ -73,9 +73,9 @@ void TwoTexturesApp::Prepare() {
   prepared = true;
 }
 
-void TwoTexturesApp::Render() {
+void TwoTexturesApp::Render(double delta_time) {
   if (!prepared) return;
-  context_->Draw();
+  context_->Draw(&scene);
 }
 }  // namespace lvk
 

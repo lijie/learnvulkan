@@ -71,4 +71,5 @@ add_vulkan_target(04-texture)
 add_vulkan_target(05-base-triangle)
 add_vulkan_target(06-two-cubes)
 add_vulkan_target(07-two-textures)
+add_vulkan_target(08-move-camera)
 

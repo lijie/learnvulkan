@@ -8,29 +8,31 @@
 namespace lvk {
 using lvk::VulkanApp;
 
-class TwoCubesApp : public VulkanApp {
+class MoveCameraApp : public VulkanApp {
  private:
   Scene scene;
 
   void InitScene();
+  void Update(double deltaTime);
 
  public:
-  virtual void Render(double delta_time) override;
+  virtual void Render(double deltaTime) override;
   virtual void Prepare() override;
 };
 
-void TwoCubesApp::InitScene() {
+void MoveCameraApp::InitScene() {
   // prepare resource
   scene.meshList = {
       primitive::cube(),
   };
   scene.textureList = {
       {"../assets/texture.jpg"},
+      {"../assets/mutou.png"},
   };
   scene.materialList = {
       {
-          "06-vert.spv",
-          "06-frag.spv",
+          "07-vert.spv",
+          "07-frag.spv",
       },
   };
 
@@ -56,14 +58,26 @@ void TwoCubesApp::InitScene() {
              .mesh = 0,
              .material = 0,
              .materialParamters{
-                 .textureList{0},
+                 .textureList{1},
              }};
 
   scene.AddNode(n1);
   scene.AddNode(n2);
 }
 
-void TwoCubesApp::Prepare() {
+void MoveCameraApp::Update(double deltaTime) {
+  auto n1 = scene.GetNode(0);
+  auto LastRotation = n1->Rotation();
+  LastRotation.y += deltaTime * 10;
+  n1->SetRotation(LastRotation);
+
+  auto n2 = scene.GetNode(1);
+  LastRotation = n2->Rotation();
+  LastRotation.z += deltaTime * 10;
+  n2->SetRotation(LastRotation);
+}
+
+void MoveCameraApp::Prepare() {
   VulkanApp::Prepare();
   InitScene();
 
@@ -72,13 +86,16 @@ void TwoCubesApp::Prepare() {
   prepared = true;
 }
 
-void TwoCubesApp::Render(double delta_time) {
+void MoveCameraApp::Render(double deltaTime) {
   if (!prepared) return;
+  Update(deltaTime);
   context_->Draw(&scene);
+
+  // std::cout << deltaTime << std::endl;
 }
 }  // namespace lvk
 
-using lvk::TwoCubesApp;
+using lvk::MoveCameraApp;
 using lvk::VulkanApp;
 
 static VulkanApp *vulkanApp{nullptr};
@@ -87,7 +104,7 @@ int main() {
   for (int32_t i = 0; i < __argc; i++) {
     VulkanApp::args.push_back(__argv[i]);
   };
-  vulkanApp = new TwoCubesApp();
+  vulkanApp = new MoveCameraApp();
   vulkanApp->InitVulkan();
   // vulkanApp->SetupWindow(hInstance, WndProc);
   vulkanApp->Prepare();

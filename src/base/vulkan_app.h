@@ -117,8 +117,8 @@ class VulkanApp {
   // void SetupRenderPass();
   // void CreatePipelineCache();
   // void SetupFrameBuffer();
-  virtual void Render() = 0;
-  void NextFrame();
+  virtual void Render(double deltaTime = 0) = 0;
+  void NextFrame(double deltaTime);
   void PrepareFrame();
   void SubmitFrame();
 

@@ -717,8 +717,10 @@ void VulkanContext::SubmitFrame() {
   VK_CHECK_RESULT(vkQueueWaitIdle(queue_));
 }
 
-void VulkanContext::Draw() {
+void VulkanContext::Draw(Scene *scene) {
   PrepareFrame();
+
+  UpdateUniformBuffers(scene);
 
   // Command buffer to be submitted to the queue
   submitInfo_.commandBufferCount = 1;

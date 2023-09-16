@@ -2,6 +2,7 @@
 
 #include <array>
 #include <iostream>
+#include <ratio>
 #include <vector>
 
 #include "vulkan_context.h"
@@ -130,17 +131,34 @@ bool VulkanApp::InitVulkan() {
   return true;
 }
 
-void VulkanApp::NextFrame() {
-  auto tStart = std::chrono::high_resolution_clock::now();
-  Render();
+void VulkanApp::NextFrame(double deltaTime) {
+  // auto tStart = std::chrono::high_resolution_clock::now();
+  Render(deltaTime);
   frameCounter++;
 }
 
 void VulkanApp::RenderLoop() {
+  auto start_time = std::chrono::high_resolution_clock::now();
+  auto end_time = std::chrono::high_resolution_clock::now();
+  auto diff_time = end_time - start_time;
+
+  // test
+  double second = 2.0;
+
   while (!window_->ShouldClose()) {
     window_->PollEvents();
     if (prepared) {
-      NextFrame();
+      auto diffm = std::chrono::duration<double, std::milli>(end_time - start_time).count();
+      auto diffsecond = diffm / 1000.0f;
+      start_time = std::chrono::high_resolution_clock::now();
+      NextFrame(diffsecond);
+      end_time = std::chrono::high_resolution_clock::now();
+
+      second -= diffsecond;
+      if (second <= 0) {
+        // std::cout << "2 seconds!" << std::endl;
+        second = 2.0;
+      }
     }
   }
   vkDeviceWaitIdle(device);
