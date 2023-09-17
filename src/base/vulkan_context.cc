@@ -8,6 +8,7 @@
 
 #include "primitives.h"
 #include "scene.h"
+#include "node.h"
 #include "vertex_data.h"
 #include "vulkan/vulkan_core.h"
 #include "vulkan_debug.h"

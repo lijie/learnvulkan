@@ -1,5 +1,6 @@
 #include "window.h"
 
+#include "lvk_log.h"
 
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
@@ -22,6 +23,18 @@ static void FramebufferResizeCallback(GLFWwindow *window, int width, int height)
   // app->framebuffer_resized_ = true;
 }
 
+void key_callback(GLFWwindow *window, int key, int /*scancode*/, int action, int /*mods*/) {
+  DEBUG_LOG("input key code: {}, action: {}", key, action);
+}
+
+void cursor_position_callback(GLFWwindow *window, double xpos, double ypos) {
+  DEBUG_LOG("mouse position: {}, {}", xpos, ypos);
+}
+
+void mouse_button_callback(GLFWwindow *window, int button, int action, int /*mods*/) {
+  DEBUG_LOG("mouse button: {}, action: {}", button, action);
+}
+
 GlfwWindow::GlfwWindow(int width, int height) {
   glfwInit();
 
@@ -31,6 +44,13 @@ GlfwWindow::GlfwWindow(int width, int height) {
   window_ = glfwCreateWindow(width, height, "Vulkan", nullptr, nullptr);
   glfwSetWindowUserPointer(window_, this);
   glfwSetFramebufferSizeCallback(window_, FramebufferResizeCallback);
+
+  glfwSetKeyCallback(window_, key_callback);
+  glfwSetCursorPosCallback(window_, cursor_position_callback);
+  glfwSetMouseButtonCallback(window_, mouse_button_callback);
+
+  glfwSetInputMode(window_, GLFW_STICKY_KEYS, 1);
+  glfwSetInputMode(window_, GLFW_STICKY_MOUSE_BUTTONS, 1);
 }
 
 bool GlfwWindow::ShouldClose() { return glfwWindowShouldClose(window_); }

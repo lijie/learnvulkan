@@ -2,6 +2,7 @@
 #include <iostream>
 
 #include "base/scene.h"
+#include "base/node.h"
 #include "base/vulkan_app.h"
 #include "base/vulkan_context.h"
 

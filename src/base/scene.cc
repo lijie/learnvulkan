@@ -1,12 +1,9 @@
 #include "scene.h"
 
 // #include <vcruntime.h>
+#include "lvk_math.h"
+#include "node.h"
 #include "stb_image.h"
-
-#define GLM_FORCE_RADIANS
-#include <glm/gtc/matrix_transform.hpp>
-
-#include "glm/glm.hpp"
 
 namespace lvk {
 
@@ -17,12 +14,7 @@ uint8_t *Texture::Load(int *w, int *h, int *ch) {
 
 void Texture::Free() { stbi_image_free(data); }
 
-Scene::Scene() {
-  cameraMatrix_.proj = glm::perspective(glm::radians(45.0f), 1280.0f / 720.0f, 0.1f, 10.0f);
-  cameraMatrix_.proj[1][1] *= -1;
-  cameraMatrix_.view =
-      glm::lookAt(glm::vec3(0.0f, 0.0f, 4.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-}
+Scene::Scene() { default_camera_.UpdateMatrix(); }
 
 Node *Scene::AddNode(int meshIdx, int matIdx, const Transform &transform) {
   auto n = new Node{

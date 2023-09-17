@@ -2,18 +2,12 @@
 
 #include <vector>
 
-#define GLM_DEPTH_ZERO_TO_ONE
-#define GLM_FORCE_RADIANS
-#include "glm/ext/matrix_float4x4.hpp"
-#include "glm/ext/matrix_transform.hpp"
 #include "vertex_data.h"
 #include "vulkan_device.h"
 
-namespace lvk {
+#include "transform.h"
 
-using vec3f = glm::vec3;
-using vec2f = glm::vec2;
-using mat4f = glm::mat4x4;
+namespace lvk {
 
 struct PrimitiveMesh {
   std::vector<VertexLayout> vertices;
@@ -32,12 +26,6 @@ struct PrimitiveMeshVK {
   void CreateBuffer(const PrimitiveMesh* mesh, VulkanDevice* device);
 
   ~PrimitiveMeshVK();
-};
-
-struct Transform {
-  vec3f translation;
-  vec3f rotation;
-  vec3f scale;  
 };
 
 namespace primitive_helpers {
