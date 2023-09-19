@@ -1,22 +1,21 @@
 #include <array>
 #include <iostream>
 
-#include "base/scene.h"
 #include "base/node.h"
+#include "base/scene.h"
 #include "base/vulkan_app.h"
 #include "base/vulkan_context.h"
+
 
 namespace lvk {
 using lvk::VulkanApp;
 
 class MoveCameraApp : public VulkanApp {
  private:
-  Scene scene;
-
   void InitScene();
-  void Update(double deltaTime);
 
  public:
+  virtual void Update(float deltaTime) override;
   virtual void Render(double deltaTime) override;
   virtual void Prepare() override;
 };
@@ -66,7 +65,9 @@ void MoveCameraApp::InitScene() {
   scene.AddNode(n2);
 }
 
-void MoveCameraApp::Update(double deltaTime) {
+void MoveCameraApp::Update(float deltaTime) {
+  VulkanApp::Update(deltaTime);
+
   auto n1 = scene.GetNode(0);
   auto LastRotation = n1->Rotation();
   LastRotation.y += deltaTime * 10;
@@ -76,6 +77,13 @@ void MoveCameraApp::Update(double deltaTime) {
   LastRotation = n2->Rotation();
   LastRotation.z += deltaTime * 10;
   n2->SetRotation(LastRotation);
+
+#if 0
+  auto camera = scene.GetCamera();
+  auto location = camera->GetLocation();
+  location.z -= 0.1 * deltaTime;
+  camera->SetLocation(location);
+#endif
 }
 
 void MoveCameraApp::Prepare() {

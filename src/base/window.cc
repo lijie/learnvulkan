@@ -25,14 +25,18 @@ static void FramebufferResizeCallback(GLFWwindow *window, int width, int height)
 
 void key_callback(GLFWwindow *window, int key, int /*scancode*/, int action, int /*mods*/) {
   DEBUG_LOG("input key code: {}, action: {}", key, action);
+  auto w = (GlfwWindow *)glfwGetWindowUserPointer(window);
+  if (w && w->event_callbacks_.OnKey) {
+    w->event_callbacks_.OnKey(key, action);
+  }
 }
 
 void cursor_position_callback(GLFWwindow *window, double xpos, double ypos) {
-  DEBUG_LOG("mouse position: {}, {}", xpos, ypos);
+  // DEBUG_LOG("mouse position: {}, {}", xpos, ypos);
 }
 
 void mouse_button_callback(GLFWwindow *window, int button, int action, int /*mods*/) {
-  DEBUG_LOG("mouse button: {}, action: {}", button, action);
+  // DEBUG_LOG("mouse button: {}, action: {}", button, action);
 }
 
 GlfwWindow::GlfwWindow(int width, int height) {

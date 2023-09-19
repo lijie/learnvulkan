@@ -11,13 +11,19 @@ struct CameraMatrix {
 
 class Camera : public Node {
  public:
-  const CameraMatrix& CameraMaterix() { return camera_materix_; }
+  Camera();
+  const CameraMatrix& GetCameraMaterix();
 
-  void SetParamters(float fov, float ratio, float near, float far);
+  void SetPespective(float fov, float aspect_ratio, float near, float far);
   void UpdateMatrix();
 
  private:
   CameraMatrix camera_materix_;
+
+  float fov_{45.0};
+  float aspect_ratio_{1280.0 / 720.0};
+  float near_{0.1};
+  float far_{10.0};
 };
 
 }  // namespace lvk

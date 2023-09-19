@@ -40,7 +40,7 @@ class Scene {
 
   Node* GetNode(int idx);
   size_t GetNodeCount() { return nodeList_.size(); }
-  const CameraMatrix& GetCameraMatrix() { return default_camera_.CameraMaterix(); }
+  const CameraMatrix& GetCameraMatrix() { return default_camera_.GetCameraMaterix(); }
   Camera* GetCamera() { return &default_camera_; }
 
   // todo: resource manager

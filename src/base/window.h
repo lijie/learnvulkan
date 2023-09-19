@@ -1,9 +1,15 @@
 #pragma once
 
+#include <functional>
+
 namespace lvk {
 
 enum class WindowType {
   Glfw,
+};
+
+struct WindowEventCallback {
+  std::function<void(int key, int action)> OnKey;
 };
 
 class Window {
@@ -16,6 +22,12 @@ class Window {
 
   virtual bool CreateWindowSurface(void *instance, void *surface) = 0;
 
-  static Window* NewWindow(WindowType type, int width, int height);
+  void SetEventCallbacks(const WindowEventCallback& callbacks) {
+    event_callbacks_ = callbacks;
+  }
+
+  static Window *NewWindow(WindowType type, int width, int height);
+
+  WindowEventCallback event_callbacks_;
 };
 }  // namespace lvk

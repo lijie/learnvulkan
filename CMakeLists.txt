@@ -17,6 +17,8 @@ include_directories(${CMAKE_SOURCE_DIR}/src)
 
 # for w32
 add_compile_definitions(VK_USE_PLATFORM_WIN32_KHR)
+# for vsprintf
+add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
 
 # ADD_LIBRARY(vulkan STATIC IMPORTED)
 # SET_TARGET_PROPERTIES(vulkan PROPERTIES IMPORTED_LOCATION C:/VulkanSDK/1.3.250.1/Lib/vulkan-1.lib)
@@ -25,7 +27,7 @@ add_compile_definitions(VK_USE_PLATFORM_WIN32_KHR)
 add_library(base
 	src/base/vulkan_device.cc src/base/vulkan_buffer.cc src/base/vulkan_initializers.cc src/base/vulkan_tools.cc src/base/vulkan_app.cc src/base/vulkan_debug.cc
 	src/base/vulkan_swapchain.cc src/base/vulkan_pipelinebuilder.cc src/base/vertex_data.cc src/base/vulkan_texture.cc src/base/primitives.cc src/base/scene.cc
-	src/base/vulkan_context.cc src/base/window.cc src/base/transform.cc src/base/camera.cc src/base/material.cc src/base/lvk_math.cc
+	src/base/vulkan_context.cc src/base/window.cc src/base/transform.cc src/base/camera.cc src/base/material.cc src/base/lvk_math.cc src/base/input.cc
 )
 target_include_directories(base PRIVATE ${CMAKE_SOURCE_DIR}/src/base)
 

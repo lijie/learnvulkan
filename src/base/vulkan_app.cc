@@ -5,6 +5,8 @@
 #include <ratio>
 #include <vector>
 
+#include "input.h"
+#include "lvk_math.h"
 #include "vulkan_context.h"
 #include "vulkan_debug.h"
 #include "vulkan_device.h"
@@ -12,8 +14,36 @@
 #include "vulkan_tools.h"
 #include "window.h"
 
+#include "lvk_log.h"
+
 namespace lvk {
-std::vector<const char*> VulkanApp::args;
+std::vector<const char *> VulkanApp::args;
+
+void DefaultCameraMoveInput::OnDirectionInput(const DirectionInput &di) {
+  DEBUG_LOG("direction input: {}, {}", (int)di.direction, di.scale);
+  if (di.direction == kInputDirection::Forward) {
+    input_vec_ += camera_->GetForwardVector() * move_speed_ * di.scale;
+  } else if (di.direction == kInputDirection::Right) {
+    input_vec_ += camera_->GetRightVector() * move_speed_ * di.scale;
+  }
+}
+
+void DefaultCameraMoveInput::OnRotationInput(const DirectionInput &ri) {
+  DEBUG_LOG("rotation input: {}, {}", (int)ri.direction, ri.scale);
+  if (ri.direction == kInputDirection::Forward) {
+    rotation_vec_ += vector::RIGHT * rotation_speed_ * ri.scale;
+  } else if (ri.direction == kInputDirection::Right) {
+    rotation_vec_ += vector::UP * rotation_speed_ * ri.scale;
+  }
+}
+
+void DefaultCameraMoveInput::Update(float delta_time) {
+  camera_->SetLocation(camera_->GetLocation() + input_vec_);
+  // DEBUG_LOG("Camera Location: {}", glm::to_string(camera_->GetLocation()));
+  input_vec_ = ZERO_VECTOR;
+  camera_->SetRotation(camera_->GetRotation() + rotation_vec_);
+  rotation_vec_ = ZERO_VECTOR;
+}
 
 bool VulkanApp::InitVulkan() {
   VkResult err;
@@ -128,6 +158,13 @@ bool VulkanApp::InitVulkan() {
   context_->set_vulkan_device(vulkanDevice);
   context_->InitWithOptions(ctx_options, physicalDevice);
 
+  WindowEventCallback callbacks{
+      .OnKey = [this](int key, int action) { input_system_.OnKey(key, action); },
+  };
+
+  window_->SetEventCallbacks(callbacks);
+  camera_move_input_ = new DefaultCameraMoveInput(scene.GetCamera());
+  input_system_.AddInputComponent(camera_move_input_);
   return true;
 }
 
@@ -166,9 +203,7 @@ void VulkanApp::RenderLoop() {
 
 std::string VulkanApp::GetShadersPath() const { return ""; }
 
-void VulkanApp::Prepare() {
-}
-
+void VulkanApp::Prepare() {}
 
 std::string VulkanApp::GetWindowTitle() {
   std::string device(deviceProperties.deviceName);
@@ -181,5 +216,12 @@ std::string VulkanApp::GetWindowTitle() {
 }
 
 void VulkanApp::HandleMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {}
+
+void VulkanApp::Update(float delta_time) {
+  if (!prepared) return;
+  if (camera_move_input_) {
+    camera_move_input_->Update(delta_time);
+  }
+}
 
 }  // namespace lvk

@@ -1,8 +1,12 @@
 #pragma once
 
 #include <chrono>
+#include <cstddef>
 #include <string>
 #include <vector>
+
+#include "input.h"
+#include "lvk_math.h"
 #include "window.h"
 
 #define GLFW_INCLUDE_VULKAN
@@ -10,11 +14,30 @@
 
 #include "commandline_parser.h"
 // #include "vulkan/vulkan.h"
+#include "scene.h"
 #include "vulkan_swapchain.h"
+
 
 namespace lvk {
 class VulkanDevice;
 class VulkanContext;
+class Camera;
+
+class DefaultCameraMoveInput : public InputComponent {
+ public:
+  DefaultCameraMoveInput(Camera *camera) : camera_(camera), input_vec_(ZERO_VECTOR), rotation_vec_(ZERO_VECTOR) {}
+  virtual void OnDirectionInput(const DirectionInput &di) override;
+  virtual void OnRotationInput(const DirectionInput &ri) override;
+  void Update(float delta_time);
+
+ private:
+  Camera *camera_;
+  vec3f input_vec_;
+  vec3f rotation_vec_;
+  float move_speed_ = 0.10;
+  float rotation_speed_ = 5.0;
+};
+
 class VulkanApp {
  protected:
   // VkInstance instance;
@@ -58,37 +81,9 @@ class VulkanApp {
   // VkQueue queue;
   // Depth buffer format (selected during Vulkan initialization)
   VkFormat depthFormat;
-  // VulkanSwapchain swapChain;
-  // VkCommandPool cmdPool;
-  // Synchronization semaphores
-  #if 0
-  struct {
-    // Swap chain image presentation
-    VkSemaphore presentComplete;
-    // Command buffer submission and execution
-    VkSemaphore renderComplete;
-  } semaphores;
-  #endif
-  // VkSubmitInfo submitInfo;
-  // std::vector<VkCommandBuffer> drawCmdBuffers;
-  /** @brief Pipeline stages used to wait at for graphics queue submissions */
-  // VkPipelineStageFlags submitPipelineStages =
-  //    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-  // std::vector<VkFence> waitFences;
-  // struct {
-  //   VkImage image;
-  //   VkDeviceMemory mem;
-  //   VkImageView view;
-  // } depthStencil;
-  // VkRenderPass renderPass = VK_NULL_HANDLE;
-  // VkPipelineCache pipelineCache;
-  // std::vector<VkFramebuffer> frameBuffers;
-  // Active frame buffer index
-  // uint32_t currentBuffer = 0;
-  // VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
   bool prepared{false};
 
-  //std::vector<VkShaderModule> shaderModules;
+  // std::vector<VkShaderModule> shaderModules;
 
   // win32 window
   // HWND window;
@@ -102,11 +97,16 @@ class VulkanApp {
 
   bool requiresStencil{false};
 
-  std::chrono::time_point<std::chrono::high_resolution_clock> lastTimestamp,
-      tPrevEnd;
+  std::chrono::time_point<std::chrono::high_resolution_clock> lastTimestamp, tPrevEnd;
   uint32_t frameCounter = 0;
 
   CommandLineParser commandLineParser;
+
+  // TODO: move to subsystem manager ?
+  InputSystem input_system_;
+
+  Scene scene;
+  DefaultCameraMoveInput *camera_move_input_{nullptr};
 
   void InitSwapchain();
   void SetupSwapchain();
@@ -128,8 +128,7 @@ class VulkanApp {
   virtual void GetEnabledExtensions() {}
 
   std::string GetShadersPath() const;
-  VkPipelineShaderStageCreateInfo LoadShader(std::string fileName,
-                                             VkShaderStageFlagBits stage);
+  VkPipelineShaderStageCreateInfo LoadShader(std::string fileName, VkShaderStageFlagBits stage);
 
  public:
   static std::vector<const char *> args;
@@ -140,6 +139,7 @@ class VulkanApp {
   // window
   void HandleMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
   HWND SetupWindow(HINSTANCE hinstance, WNDPROC wndproc);
+  virtual void Update(float delta_time);
 
   virtual ~VulkanApp() {}
 };

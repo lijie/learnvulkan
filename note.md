@@ -11,3 +11,9 @@
   - 只能生成 makefile 和 ninjia 时生效, 意味着对 visual studio sln 无效
   - 需要先在 vscode 中使用 cmake: select kit 到 clang, 生成makefile并编译一次获得json文件后, 再切换到 vs.
   - 当然也可以直接使用 clang 编译项目
+
+
+### Vulkan 的坐标系
+- 左手坐标系
+- Y-up, Z-forward, X-right
+- Camera 看 +z 方向

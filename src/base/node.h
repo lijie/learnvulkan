@@ -1,5 +1,6 @@
 #pragma once
 
+#include "glm/geometric.hpp"
 #include "material.h"
 #include "transform.h"
 
@@ -45,10 +46,13 @@ struct Node {
 
   void SetRotation(const vec3f& in) {
     transform.rotation = in;
-    ClampRotation(transform.rotation.x);
     ClampRotation(transform.rotation.y);
+    ClampRotation(transform.rotation.x);
     ClampRotation(transform.rotation.z);
-    localMatrix();
+  }
+
+  void SetLocation(const vec3f& in) {
+    transform.translation = in;
   }
 
   void SetLocationAndRotation(const vec3f& location, const vec3f rotation) {
@@ -56,8 +60,20 @@ struct Node {
     SetRotation(rotation);
   }
 
+  vec3f GetLocation() {
+    return transform.translation;
+  }
+  vec3f GetRotation() {
+    return transform.rotation;
+  }
+
   vec3f GetForwardVector() {
-    return vec3f(matrix[2][0], matrix[2][1], matrix[2][2]);
+    localMatrix();
+    return glm::normalize(vec3f(matrix[2][0], matrix[2][1], matrix[2][2]));
+  }
+  vec3f GetRightVector() {
+    localMatrix();
+    return glm::normalize(vec3f(matrix[0][0], matrix[0][1], matrix[0][2]));
   }
 };
 }  // namespace lvk
