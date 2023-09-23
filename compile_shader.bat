@@ -19,4 +19,7 @@ C:\VulkanSDK\1.3.250.0\Bin\glslc.exe src\06-two-cubes\06-shader.frag -o build\06
 C:\VulkanSDK\1.3.250.0\Bin\glslc.exe src\07-two-textures\07-shader.vert -o build\07-vert.spv
 C:\VulkanSDK\1.3.250.0\Bin\glslc.exe src\07-two-textures\07-shader.frag -o build\07-frag.spv
 
+C:\VulkanSDK\1.3.250.0\Bin\glslc.exe src\09-gltf\09-shader.vert -o build\09-vert.spv
+C:\VulkanSDK\1.3.250.0\Bin\glslc.exe src\09-gltf\09-shader.frag -o build\09-frag.spv
+
 pause
