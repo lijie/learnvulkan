@@ -37,6 +37,7 @@ if (true)
 	include_directories(${CMAKE_SOURCE_DIR}/deps/glfw-3.3.8.bin.WIN64/include)
 
 	include_directories(${CMAKE_SOURCE_DIR}/deps/stb)
+	include_directories(${CMAKE_SOURCE_DIR}/deps/gltf)
 
 	# ADD_LIBRARY(assimp STATIC IMPORTED)
 	# SET_TARGET_PROPERTIES(assimp PROPERTIES IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/deps/assimp/lib/assimp-vc142-mtd.lib)
@@ -74,4 +75,5 @@ add_vulkan_target(05-base-triangle)
 add_vulkan_target(06-two-cubes)
 add_vulkan_target(07-two-textures)
 add_vulkan_target(08-move-camera)
+add_vulkan_target(09-gltf)
 
