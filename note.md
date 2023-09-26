@@ -14,6 +14,32 @@
 
 
 ### Vulkan 的坐标系
-- 左手坐标系
+- 右手坐标系
 - Y-up, Z-forward, X-right
 - Camera 看 +z 方向
+
+### vertex input data
+
+- 顶点数据不一定是 `interleaved`
+- 比如:
+  ```C++
+  struct vertex {
+    vec3 position;
+    vec3 normal;
+    vec2 uv;
+  };
+  vertex[10] = { /* ... */ }
+  ```
+- 也可能是:
+  ```C++
+  vec3 position[10] = {};
+  vec3 normal[10] = {};
+  vec3 uv[10] = {};
+  ```
+- 大多数vulkan sample都是 `interleaved` 顶点作为例子, 但实践中, 可能 `non-interleaved` 更常见? 比如gltf的数据就是.
+
+[参考这里](https://github.com/KhronosGroup/Vulkan-Guide/blob/main/chapters/vertex_input_data_processing.adoc)
+
+### VK_WHOLE_SIZE
+
+`VK_WHOLE_SIZE` is a special value indicating that the entire remaining length of a buffer following a given offset should be used.

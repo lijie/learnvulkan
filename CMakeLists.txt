@@ -77,4 +77,5 @@ add_vulkan_target(06-two-cubes)
 add_vulkan_target(07-two-textures)
 add_vulkan_target(08-move-camera)
 add_vulkan_target(09-gltf)
+add_vulkan_target(10-pbr-basic)
 

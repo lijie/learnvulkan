@@ -15,6 +15,7 @@ struct PrimitiveMesh {
 };
 
 // todo: move to vulkan context
+// TODO: move to vulkan_primitives
 struct PrimitiveMeshVK {
   VulkanBuffer* vertexBuffer{nullptr};
   VulkanBuffer* indexBuffer{nullptr};

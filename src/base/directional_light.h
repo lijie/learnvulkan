@@ -4,8 +4,10 @@
 
 namespace lvk {
 
-    class DirectionalLight : public Node {
+class DirectionalLight : public Node {
+ public:
+ protected:
+  vec3f color_;
+};
 
-    };
-
-}
+}  // namespace lvk

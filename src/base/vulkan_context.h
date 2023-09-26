@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "lvk_math.h"
 #include "primitives.h"
 #include "vulkan/vulkan.h"
 #include "vulkan/vulkan_core.h"
@@ -73,7 +74,11 @@ class VulkanContext {
 
   void LoadTextures(Scene *scene, VulkanDevice *device);
   void PrepareUniformBuffers(Scene *scene, VulkanDevice *device);
+
   void UpdateUniformBuffers(Scene *scene);
+  void UpdateVertexUniformBuffers(Scene *scene);
+  void UpdateFragmentUniformBuffers(Scene *scene);
+
   void SetupDescriptorPool(VulkanDevice *device);
   void SetupDescriptorSetLayout(VulkanDevice *device);
   VkDescriptorSet AllocDescriptorSet(VulkanNode *vkNode);
@@ -108,9 +113,9 @@ class VulkanContext {
                                           VkDeviceSize offset = 0);
 
   // temp test
-  VkDescriptorBufferInfo CreateDescriptor2() {
-    return CreateDescriptor(&uniformBuffers_.dynamic, uniformBuffers_.dynamicAlignment);
-  }
+  // VkDescriptorBufferInfo CreateDescriptor2() {
+  //   return CreateDescriptor(&uniformBuffers_.dynamic, uniformBuffers_.dynamicAlignment);
+  // }
 
   VkDescriptorPool DescriptorPool() { return descriptorPool_; }
   const VkDescriptorSetLayout *DescriptorSetLayout() { return &descriptorSetLayout_; }
@@ -170,12 +175,33 @@ class VulkanContext {
     glm::mat4 modelView;
   };
 
+  struct _UBOFragment {
+    vec3f color;
+    // TODO: 获取最小 alignment
+    uint8_t padding[52];
+  };
+
+  struct UniformBuffer {
+    VulkanBuffer buffer;
+    size_t buffer_size{0};
+    size_t alignment{0};
+  };
+
   struct _UniformBuffers {
     _UBOMesh *model{nullptr};
+    _UBOFragment *fragment_data{nullptr};
+    // uniform buffer for global proj & view matrix
     VulkanBuffer view;
-    VulkanBuffer dynamic;
-    size_t dynamicBufferSize{0};
-    size_t dynamicAlignment{0};
+
+    // uniform buffer in vertex shader, per object data, all packed here
+    UniformBuffer vertex_ub;
+    // uniform buffer in pixel shader, per object data, all packed here
+    UniformBuffer fragment_ub;
+
+    // VulkanBuffer dynamic;
+    // size_t dynamicBufferSize{0};
+    // size_t dynamicAlignment{0};
+    // VulkanBuffer fragment;
   } uniformBuffers_;
 
   struct _VertexInputState {
