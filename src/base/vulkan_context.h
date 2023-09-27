@@ -178,21 +178,17 @@ class VulkanContext {
   };
 
   struct _UBOFragment {
-    vec3f color;
-    // TODO: 获取最小 alignment
-    uint8_t padding[52];
+    vec4f color;
+    float roughness;
+    float metallic;
+    float padding[2];
+    float padding2[8];
   };
 
   struct _UBOShared {
-    vec3f camera_position;
-    // TODO: 获取最小 alignment
-    uint8_t padding[52];
-  };
-
-  struct _UBOLights {
-    vec3f light_direction[4];
-    vec3f light_color[4];
-    uint32_t light_num{1};
+    vec4f camera_position;
+    vec4f light_direction;
+    vec4f light_color;
   };
 
   struct UniformBuffer {
@@ -208,7 +204,6 @@ class VulkanContext {
     // uniform buffer for global proj & view matrix
     // VulkanBuffer view;
 
-    UniformBuffer lights_ub;
     UniformBuffer shared_ub;
     // uniform buffer in vertex shader, per object data, all packed here
     UniformBuffer vertex_ub;

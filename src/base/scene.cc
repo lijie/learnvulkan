@@ -5,6 +5,8 @@
 #include "node.h"
 #include "stb_image.h"
 
+#include "directional_light.h"
+
 namespace lvk {
 
 uint8_t *Texture::Load(int *w, int *h, int *ch) {
@@ -39,6 +41,8 @@ void Scene::ForEachNode(std::function<void(Node *, int)> cb) {
 }
 
 Node *Scene::GetNode(int idx) { return nodeList_[idx]; }
+
+void Scene::AddLight(std::unique_ptr<DirectionalLight> light) { lightList_.emplace_back(std::move(light)); }
 
 const PrimitiveMesh *Scene::GetResourceMesh(int handle) { return &meshList[handle]; }
 const Texture *Scene::GetResourceTexture(int handle) { return &textureList[handle]; }

@@ -6,7 +6,8 @@
 namespace lvk {
 
 VkResult VulkanBuffer::Map(VkDeviceSize size, VkDeviceSize offset) {
-  return vkMapMemory(device_, memory_, offset, size, 0, &mapped_);
+  auto result = vkMapMemory(device_, memory_, offset, size, 0, &mapped_);
+  return result;
 }
 
 void VulkanBuffer::Unmap() {

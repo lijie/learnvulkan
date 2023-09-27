@@ -7,6 +7,7 @@
 #include <iostream>
 #include <vector>
 
+#include "directional_light.h"
 #include "lvk_math.h"
 #include "node.h"
 #include "primitives.h"
@@ -106,6 +107,9 @@ void VulkanContext::CreateVulkanScene(Scene* scene, VulkanDevice* device) {
   // SetupDescriptorSet();
 }
 
+#define MIN_ALIGNMENT 64
+#define UNIFORM_ALIGNMENT(size) ((size + MIN_ALIGNMENT - 1) & ~(MIN_ALIGNMENT - 1))
+
 // TODO: use global proj & view matrix
 void VulkanContext::PrepareUniformBuffers(Scene* scene, VulkanDevice* device) {
   size_t bufferSize = scene->GetNodeCount() * sizeof(_UBOMesh);
@@ -129,20 +133,14 @@ void VulkanContext::PrepareUniformBuffers(Scene* scene, VulkanDevice* device) {
   uniformBuffers_.fragment_data = reinterpret_cast<_UBOFragment*>(malloc(fragment_ub_size));
 
   // shared
+  size_t shared_ub_size = UNIFORM_ALIGNMENT(sizeof(_UBOShared));
   VK_CHECK_RESULT(device->CreateBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
                                        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                                       &uniformBuffers_.shared_ub.buffer, sizeof(_UBOShared)));
-  uniformBuffers_.shared_ub.buffer_size = sizeof(_UBOShared);
-  uniformBuffers_.shared_ub.alignment = sizeof(_UBOShared);
-  uniformBuffers_.shared = reinterpret_cast<_UBOShared*>(malloc(sizeof(_UBOShared)));
-  memset(uniformBuffers_.shared, 0, sizeof(_UBOShared));
-
-  // ligts in fragment
-  VK_CHECK_RESULT(device->CreateBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                                       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                                       &uniformBuffers_.lights_ub.buffer, sizeof(_UBOShared)));
-  uniformBuffers_.lights_ub.buffer_size = sizeof(_UBOLights);
-  uniformBuffers_.lights_ub.alignment = sizeof(_UBOLights);
+                                       &uniformBuffers_.shared_ub.buffer, shared_ub_size));
+  uniformBuffers_.shared_ub.buffer_size = shared_ub_size;
+  uniformBuffers_.shared_ub.alignment = shared_ub_size;
+  uniformBuffers_.shared = reinterpret_cast<_UBOShared*>(malloc(shared_ub_size));
+  memset(uniformBuffers_.shared, 0, shared_ub_size);
 
   UpdateUniformBuffers(scene);
 }
@@ -171,7 +169,7 @@ void VulkanContext::UpdateFragmentUniformBuffers(Scene* scene) {
   // update model matrix
   scene->ForEachNode([this](Node* n, int idx) {
     auto& data = uniformBuffers_.fragment_data[idx];
-    data.color = n->materialParamters.baseColor;  // vec3f(1.0, 0.0, 0.0);
+    data.color = vec4f(n->materialParamters.baseColor, 1.0);
   });
 
   // update to gpu
@@ -180,10 +178,19 @@ void VulkanContext::UpdateFragmentUniformBuffers(Scene* scene) {
 }
 
 void VulkanContext::UpdateSharedUniformBuffers(Scene* scene) {
-  uniformBuffers_.shared[0].camera_position = scene->GetCamera()->GetLocation();
+  uniformBuffers_.shared->camera_position = vec4f(scene->GetCamera()->GetLocation(), 1.0);
+
+  const auto& light_array = scene->GetAllLights();
+  // uniformBuffers_.shared[0].light_num = light_array.size();
+
+  for (auto i = 0; i < light_array.size(); i++) {
+    uniformBuffers_.shared->light_direction = vec4f(light_array[i]->GetForwardVector(), 1.0);
+    uniformBuffers_.shared->light_color = vec4f(light_array[i]->color(), 1.0);
+  }
+
   // update to gpu
   uniformBuffers_.shared_ub.buffer.Update(reinterpret_cast<const uint8_t*>(uniformBuffers_.shared),
-                                          uniformBuffers_.shared_ub.buffer_size);
+                                          sizeof(*uniformBuffers_.shared));
 }
 
 void VulkanContext::UpdateLightsUniformBuffers(Scene* scene) {}
@@ -217,7 +224,7 @@ void VulkanContext::SetupDescriptorPool(VulkanDevice* device) {
   // Example uses one ubo and one image sampler
   std::vector<VkDescriptorPoolSize> pool_sizes = {
       initializers::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 4),
-      initializers::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 2),
+      initializers::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 4),
       initializers::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2)};
 
   // TODO: maxSets 怎么算的?
@@ -549,7 +556,7 @@ VkDescriptorSet VulkanContext::AllocDescriptorSet(VulkanNode* vkNode) {
   VkDescriptorImageInfo textureDescriptor =
       vkNode->vkTexture->GetDescriptorImageInfo();  // texture_->GetDescriptorImageInfo();
 
-  auto shared_descriptor = CreateDescriptor(&uniformBuffers_.shared_ub.buffer, uniformBuffers_.shared_ub.alignment);
+  auto shared_descriptor = CreateDescriptor(&uniformBuffers_.shared_ub.buffer);
   auto dynamic_descriptor = CreateDescriptor(&uniformBuffers_.vertex_ub.buffer, uniformBuffers_.vertex_ub.alignment);
   auto fragment_descriptor =
       CreateDescriptor(&uniformBuffers_.fragment_ub.buffer, uniformBuffers_.fragment_ub.alignment);

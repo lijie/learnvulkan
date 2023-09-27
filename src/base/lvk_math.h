@@ -13,6 +13,7 @@
 namespace lvk {
 
 using vec3f = glm::vec3;
+using vec4f = glm::vec4;
 using vec2f = glm::vec2;
 using mat4f = glm::mat4x4;
 

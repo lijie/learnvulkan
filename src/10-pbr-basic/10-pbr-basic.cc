@@ -4,12 +4,14 @@
 #include <array>
 #include <iostream>
 
+#include "base/directional_light.h"
 #include "base/lvk_log.h"
 #include "base/mesh_loader.h"
 #include "base/node.h"
 #include "base/scene.h"
 #include "base/vulkan_app.h"
 #include "base/vulkan_context.h"
+
 
 lvk::PrimitiveMesh test_lvk_mesh;
 
@@ -73,6 +75,9 @@ void PbrBasicApp::InitScene() {
 
   scene.AddNode(n1);
   scene.AddNode(n2);
+
+  scene.AddLight(DirectionalLight::NewDirectionalLight(
+      Transform{.translation{5.0, 5.0, 5.0}, .rotation{0, 0, 0}, .scale{1.0, 1.0, 1.0}}, vec3f{1.0, 1.0, 1.0}));
 }
 
 void PbrBasicApp::Update(float deltaTime) {
@@ -121,8 +126,8 @@ static VulkanApp* vulkanApp{nullptr};
 
 int main() {
   // test_lvk_mesh = LoadGltf();
-  assert(freopen("stdout.txt", "w", stdout) != NULL);
-  assert(freopen("stderr.txt", "w", stderr) != NULL);
+  // assert(freopen("stdout.txt", "w", stdout) != NULL);
+  // assert(freopen("stderr.txt", "w", stderr) != NULL);
 
   for (int32_t i = 0; i < __argc; i++) {
     VulkanApp::args.push_back(__argv[i]);

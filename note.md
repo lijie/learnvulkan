@@ -51,3 +51,6 @@
 
 ### draw multiple objects
 - `vkCmdBindDescriptorSets` 可以设置 uniform 的偏移数组, 对于使用了 dynamic uniform 的情况, 可以对每个 object 的每个 binding 设置不同的偏移读取 uniform memory 中不同的位置
+
+### uniform buffer alignment
+- 似乎 uniform buffer struct 必须是 16B 对齐的, 所以引入 vec3 会导致一些很费解的对齐问题. 都使用 vec4/mat4 ?

@@ -6,7 +6,9 @@ layout (location = 2) in vec2 inUV;
 
 layout (binding = 0) uniform UBOShared
 {
-	vec3 camera_position;
+	vec4 camera_position;
+	vec4 light_direction;
+    vec4 light_color;
 } ubo_shared;
 
 layout (binding = 1) uniform UBO 
