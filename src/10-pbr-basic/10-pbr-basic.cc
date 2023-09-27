@@ -11,7 +11,6 @@
 #include "base/vulkan_app.h"
 #include "base/vulkan_context.h"
 
-
 lvk::PrimitiveMesh test_lvk_mesh;
 
 namespace lvk {
@@ -55,6 +54,7 @@ void PbrBasicApp::InitScene() {
              .mesh = 0,
              .material = 0,
              .materialParamters{
+                 .baseColor{1.0, 0.0, 0.0},
                  .textureList{0},
              }};
 
@@ -67,6 +67,7 @@ void PbrBasicApp::InitScene() {
              .mesh = 0,
              .material = 0,
              .materialParamters{
+                 .baseColor{0.0, 1.0, 0.0},
                  .textureList{1},
              }};
 
@@ -120,6 +121,8 @@ static VulkanApp* vulkanApp{nullptr};
 
 int main() {
   // test_lvk_mesh = LoadGltf();
+  assert(freopen("stdout.txt", "w", stdout) != NULL);
+  assert(freopen("stderr.txt", "w", stderr) != NULL);
 
   for (int32_t i = 0; i < __argc; i++) {
     VulkanApp::args.push_back(__argv[i]);

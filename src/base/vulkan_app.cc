@@ -97,7 +97,7 @@ bool VulkanApp::InitVulkan() {
       selectedDevice = index;
     }
   }
-  if (commandLineParser.isSet("gpulist")) {
+  if (1) {
     std::cout << "Available Vulkan devices"
               << "\n";
     for (uint32_t i = 0; i < gpuCount; i++) {
@@ -113,16 +113,19 @@ bool VulkanApp::InitVulkan() {
 #endif
 
   physicalDevice = physicalDevices[selectedDevice];
+  std::cout << "select physical device: " << selectedDevice << std::endl;
 
   // Store properties (including limits), features and memory properties of the
   // physical device (so that examples can check against them)
   vkGetPhysicalDeviceProperties(physicalDevice, &deviceProperties);
   vkGetPhysicalDeviceFeatures(physicalDevice, &deviceFeatures);
   vkGetPhysicalDeviceMemoryProperties(physicalDevice, &deviceMemoryProperties);
+  std::cout << "Get Device Properties " << std::endl;
 
   // Derived examples can override this to set actual features (based on above
   // readings) to enable for logical device creation
   GetEnabledFeatures();
+  std::cout << "GetEnabledFeatures " << std::endl;
 
   // Vulkan device creation
   // This is handled by a separate class that gets a logical device
@@ -132,6 +135,7 @@ bool VulkanApp::InitVulkan() {
   // Derived examples can enable extensions based on the list of supported
   // extensions read from the physical device
   GetEnabledExtensions();
+  std::cout << "GetEnabledExtensions " << std::endl;
 
   VkResult res = vulkanDevice->CreateLogicalDevice(enabledFeatures, enabledDeviceExtensions, deviceCreatepNextChain);
   if (res != VK_SUCCESS) {

@@ -116,10 +116,6 @@ void VulkanContext::PrepareUniformBuffers(Scene* scene, VulkanDevice* device) {
   uniformBuffers_.vertex_ub.buffer_size = bufferSize;
   uniformBuffers_.vertex_ub.alignment = sizeof(_UBOMesh);
 
-  VK_CHECK_RESULT(device->CreateBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                                       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                                       &uniformBuffers_.view, sizeof(CameraMatrix)));
-
   size_t fragment_ub_size = scene->GetNodeCount() * sizeof(_UBOFragment);
   VK_CHECK_RESULT(device->CreateBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
                                        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
@@ -131,12 +127,30 @@ void VulkanContext::PrepareUniformBuffers(Scene* scene, VulkanDevice* device) {
   // TODO: necessay?
   uniformBuffers_.model = reinterpret_cast<_UBOMesh*>(malloc(bufferSize));
   uniformBuffers_.fragment_data = reinterpret_cast<_UBOFragment*>(malloc(fragment_ub_size));
+
+  // shared
+  VK_CHECK_RESULT(device->CreateBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                                       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                                       &uniformBuffers_.shared_ub.buffer, sizeof(_UBOShared)));
+  uniformBuffers_.shared_ub.buffer_size = sizeof(_UBOShared);
+  uniformBuffers_.shared_ub.alignment = sizeof(_UBOShared);
+  uniformBuffers_.shared = reinterpret_cast<_UBOShared*>(malloc(sizeof(_UBOShared)));
+  memset(uniformBuffers_.shared, 0, sizeof(_UBOShared));
+
+  // ligts in fragment
+  VK_CHECK_RESULT(device->CreateBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                                       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                                       &uniformBuffers_.lights_ub.buffer, sizeof(_UBOShared)));
+  uniformBuffers_.lights_ub.buffer_size = sizeof(_UBOLights);
+  uniformBuffers_.lights_ub.alignment = sizeof(_UBOLights);
+
   UpdateUniformBuffers(scene);
 }
 
 void VulkanContext::UpdateUniformBuffers(Scene* scene) {
   UpdateVertexUniformBuffers(scene);
   UpdateFragmentUniformBuffers(scene);
+  UpdateSharedUniformBuffers(scene);
 }
 
 void VulkanContext::UpdateVertexUniformBuffers(Scene* scene) {
@@ -157,7 +171,7 @@ void VulkanContext::UpdateFragmentUniformBuffers(Scene* scene) {
   // update model matrix
   scene->ForEachNode([this](Node* n, int idx) {
     auto& data = uniformBuffers_.fragment_data[idx];
-    data.color = vec3f(1.0, 0.0, 0.0);
+    data.color = n->materialParamters.baseColor;  // vec3f(1.0, 0.0, 0.0);
   });
 
   // update to gpu
@@ -165,14 +179,26 @@ void VulkanContext::UpdateFragmentUniformBuffers(Scene* scene) {
                                             uniformBuffers_.fragment_ub.buffer_size);
 }
 
+void VulkanContext::UpdateSharedUniformBuffers(Scene* scene) {
+  uniformBuffers_.shared[0].camera_position = scene->GetCamera()->GetLocation();
+  // update to gpu
+  uniformBuffers_.shared_ub.buffer.Update(reinterpret_cast<const uint8_t*>(uniformBuffers_.shared),
+                                          uniformBuffers_.shared_ub.buffer_size);
+}
+
+void VulkanContext::UpdateLightsUniformBuffers(Scene* scene) {}
+
 void VulkanContext::SetupDescriptorSetLayout(VulkanDevice* device) {
   std::vector<VkDescriptorSetLayoutBinding> set_layout_bindings = {
-      initializers::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0),
+      // global shared uniform buffers
+      initializers::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                               VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0),
       initializers::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT,
                                                1),
       initializers::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT,
                                                2),
-      initializers::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT, 3),
+      initializers::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT,
+                                               3),
   };
 
   VkDescriptorSetLayoutCreateInfo descriptor_layout = initializers::DescriptorSetLayoutCreateInfo(
@@ -356,6 +382,11 @@ VkResult VulkanContext::CreateInstance(bool enableValidation) {
     }
   }
   VkResult result = vkCreateInstance(&instanceCreateInfo, nullptr, &instance_);
+  if (result == VK_SUCCESS) {
+    std::cout << "vkCreateInstance SUCCESS" << std::endl;
+  } else {
+    std::cout << "vkCreateInstance FAIL" << std::endl;
+  }
 
   // If the debug utils extension is present we set up debug functions, so
   // samples an label objects for debugging
@@ -518,10 +549,14 @@ VkDescriptorSet VulkanContext::AllocDescriptorSet(VulkanNode* vkNode) {
   VkDescriptorImageInfo textureDescriptor =
       vkNode->vkTexture->GetDescriptorImageInfo();  // texture_->GetDescriptorImageInfo();
 
+  auto shared_descriptor = CreateDescriptor(&uniformBuffers_.shared_ub.buffer, uniformBuffers_.shared_ub.alignment);
   auto dynamic_descriptor = CreateDescriptor(&uniformBuffers_.vertex_ub.buffer, uniformBuffers_.vertex_ub.alignment);
-  auto fragment_descriptor = CreateDescriptor(&uniformBuffers_.fragment_ub.buffer, uniformBuffers_.fragment_ub.alignment);
+  auto fragment_descriptor =
+      CreateDescriptor(&uniformBuffers_.fragment_ub.buffer, uniformBuffers_.fragment_ub.alignment);
 
   std::vector<VkWriteDescriptorSet> writeDescriptorSets = {
+      // Binding 0 : shared
+      initializers::WriteDescriptorSet(descriptor_set, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &shared_descriptor),
       // Binding 1 : Vertex shader uniform buffer
       initializers::WriteDescriptorSet(descriptor_set, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1,
                                        &dynamic_descriptor),
@@ -535,7 +570,8 @@ VkDescriptorSet VulkanContext::AllocDescriptorSet(VulkanNode* vkNode) {
                                        &textureDescriptor),  // Pointer to the descriptor image for our
                                                              // texture
       // Binding3 : Fragment shader uniform buffer
-      initializers::WriteDescriptorSet(descriptor_set, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 3, &fragment_descriptor),
+      initializers::WriteDescriptorSet(descriptor_set, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 3,
+                                       &fragment_descriptor),
   };
 
   vkUpdateDescriptorSets(device_->device(), static_cast<uint32_t>(writeDescriptorSets.size()),

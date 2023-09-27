@@ -78,6 +78,8 @@ class VulkanContext {
   void UpdateUniformBuffers(Scene *scene);
   void UpdateVertexUniformBuffers(Scene *scene);
   void UpdateFragmentUniformBuffers(Scene *scene);
+  void UpdateSharedUniformBuffers(Scene *scene);
+  void UpdateLightsUniformBuffers(Scene *scene);
 
   void SetupDescriptorPool(VulkanDevice *device);
   void SetupDescriptorSetLayout(VulkanDevice *device);
@@ -181,6 +183,18 @@ class VulkanContext {
     uint8_t padding[52];
   };
 
+  struct _UBOShared {
+    vec3f camera_position;
+    // TODO: 获取最小 alignment
+    uint8_t padding[52];
+  };
+
+  struct _UBOLights {
+    vec3f light_direction[4];
+    vec3f light_color[4];
+    uint32_t light_num{1};
+  };
+
   struct UniformBuffer {
     VulkanBuffer buffer;
     size_t buffer_size{0};
@@ -190,9 +204,12 @@ class VulkanContext {
   struct _UniformBuffers {
     _UBOMesh *model{nullptr};
     _UBOFragment *fragment_data{nullptr};
+    _UBOShared *shared;
     // uniform buffer for global proj & view matrix
-    VulkanBuffer view;
+    // VulkanBuffer view;
 
+    UniformBuffer lights_ub;
+    UniformBuffer shared_ub;
     // uniform buffer in vertex shader, per object data, all packed here
     UniformBuffer vertex_ub;
     // uniform buffer in pixel shader, per object data, all packed here

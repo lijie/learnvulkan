@@ -12,6 +12,11 @@
   - 需要先在 vscode 中使用 cmake: select kit 到 clang, 生成makefile并编译一次获得json文件后, 再切换到 vs.
   - 当然也可以直接使用 clang 编译项目
 
+### 使用 lldb 调试
+- 我发现不需要在网上搜索的那么复杂, 写各种配置文件
+- 首先启用clangd扩展
+- 设置环境变量 PYTHONPATH=C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.10_3.10.3056.0_x64__qbz5n2kfra8p0\lib
+- 重启vscode就可以了
 
 ### Vulkan 的坐标系
 - 右手坐标系
@@ -43,3 +48,6 @@
 ### VK_WHOLE_SIZE
 
 `VK_WHOLE_SIZE` is a special value indicating that the entire remaining length of a buffer following a given offset should be used.
+
+### draw multiple objects
+- `vkCmdBindDescriptorSets` 可以设置 uniform 的偏移数组, 对于使用了 dynamic uniform 的情况, 可以对每个 object 的每个 binding 设置不同的偏移读取 uniform memory 中不同的位置

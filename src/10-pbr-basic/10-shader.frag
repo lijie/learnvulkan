@@ -7,13 +7,13 @@ layout (location = 1) in vec3 inNormal;
 
 layout (location = 0) out vec4 outFragColor;
 
-layout (binding = 3) uniform UBO 
+layout (binding = 3) uniform UBOFrag
 {
 	vec3 color;
-} ubo;
+} ubo_frag;
 
 void main() 
 {
 	vec4 color = texture(samplerColor, inUV);
-	outFragColor = vec4(ubo.color, 1.0);	
+	outFragColor = vec4(ubo_frag.color, 1.0);	
 }
