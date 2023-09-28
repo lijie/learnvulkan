@@ -57,7 +57,7 @@ vec3 BRDF(vec3 L, vec3 V, vec3 N, float metallic, float roughness)
 {
 	// Precalculate vectors and dot products	
 	vec3 H = normalize (V + L);
-	float dotNV = clamp(dot(N, V), 0.0, 1.0);
+	float dotNV = abs(dot(N, V)) + 1e-5;  // clamp(dot(N, V), 0.01, 1.0);
 	float dotNL = clamp(dot(N, L), 0.0, 1.0);
 	float dotLH = clamp(dot(L, H), 0.0, 1.0);
 	float dotNH = clamp(dot(N, H), 0.0, 1.0);
@@ -85,21 +85,36 @@ vec3 BRDF(vec3 L, vec3 V, vec3 N, float metallic, float roughness)
 	return color;
 }
 
+// sample blinn phong test
+vec3 BlinnPhong(vec3 L, vec3 N, vec3 V)
+{
+	float diff = max(dot(L, N), 0.0);
+    // return diff * vec3(1.0, 1.0, 1.0);
+
+	vec3 HV = normalize(L + V);  
+    float spec = pow(max(dot(N, HV), 0.0), 32.0);
+
+	return spec * vec3(0.3) + diff * vec3(1.0);
+}
+
 void main() 
 {
 	vec3 N = normalize(inNormal);
 	vec3 V = normalize(ubo_shared.camera_position.xyz - inWorldPosition);
 
 	vec3 Lo = vec3(0.0);
-	vec3 L = normalize(ubo_shared.light_direction.xyz);
+
+	// L direction is fragment to light
+	vec3 L = normalize(-ubo_shared.light_direction.xyz);
 	Lo += BRDF(L, V, N, ubo_frag.metallic, ubo_frag.roughness);
 
-	vec3 color = ubo_frag.color.xyz * 0.02;
+	vec3 color = ubo_frag.color.xyz / PI;
 	color += Lo;
 
 	// Gamma correct
 	color = pow(color, vec3(0.4545));
 
 	// vec4 color = texture(samplerColor, inUV);
+	// BlinnPhong(L, N, V);
 	outFragColor = vec4(color, 1.0);	
 }

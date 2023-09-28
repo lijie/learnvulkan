@@ -36,6 +36,7 @@ void main()
 	gl_Position = ubo.projection * ubo.view * ubo.model * vec4(inPos.xyz, 1.0);
 
     vec4 pos = ubo.model * vec4(inPos, 1.0);
-	outNormal = mat3(inverse(transpose(ubo.model))) * inNormal;
+	// outNormal = mat3(inverse(transpose(ubo.model))) * inNormal;
+	outNormal = mat3(ubo.model) * inNormal;
 	outWorldPosition = worldPos;
 }

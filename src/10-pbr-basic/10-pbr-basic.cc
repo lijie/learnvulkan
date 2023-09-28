@@ -56,7 +56,7 @@ void PbrBasicApp::InitScene() {
              .material = 0,
              .materialParamters{
                  .baseColor{1.0f, 0.765557f, 0.336057f},  // gold
-                 .roughness = 0.1f,
+                 .roughness = 0.5f,
                  .metallic = 1.0,
                  .textureList{0},
              }};
@@ -78,7 +78,7 @@ void PbrBasicApp::InitScene() {
   // scene.AddNode(n2);
 
   scene.AddLight(DirectionalLight::NewDirectionalLight(
-      Transform{.translation{5.0, 0.0, 5.0}, .rotation{0, 0, 0}, .scale{1.0, 1.0, 1.0}}, vec3f{1.0, 1.0, 1.0}));
+      Transform{.translation{0.0, 0.0, -6.0}, .rotation{0, 0, 0}, .scale{1.0, 1.0, 1.0}}, vec3f{1.0, 1.0, 1.0}));
 }
 
 void PbrBasicApp::Update(float deltaTime) {
