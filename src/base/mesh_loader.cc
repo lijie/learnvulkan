@@ -179,6 +179,11 @@ static std::unique_ptr<PrimitiveMesh> LoadGltfSceneNode(const tinygltf::Model& m
   for (size_t i = 0; i < node.children.size(); i++) {
     assert((node.children[i] >= 0) && (node.children[i] < model.nodes.size()));
     result = LoadGltfSceneNode(model, model.nodes[node.children[i]]);
+
+    // TODO: only load one mesh? load multi mesh ?
+    if (result) {
+      break;
+    }
   }
 
   return result;
@@ -186,6 +191,7 @@ static std::unique_ptr<PrimitiveMesh> LoadGltfSceneNode(const tinygltf::Model& m
 
 static std::unique_ptr<PrimitiveMesh> LoadGltf(const std::string& path) {
   using namespace tinygltf;
+std::unique_ptr<PrimitiveMesh> result;
 
   Model model;
   TinyGLTF loader;
@@ -212,7 +218,10 @@ static std::unique_ptr<PrimitiveMesh> LoadGltf(const std::string& path) {
   const tinygltf::Scene& scene = model.scenes[model.defaultScene];
   for (size_t i = 0; i < scene.nodes.size(); ++i) {
     assert((scene.nodes[i] >= 0) && (scene.nodes[i] < model.nodes.size()));
-    return LoadGltfSceneNode(model, model.nodes[scene.nodes[i]]);
+    result = LoadGltfSceneNode(model, model.nodes[scene.nodes[i]]);
+    if (result) {
+      return result;
+    }
   }
   return nullptr;
 }
