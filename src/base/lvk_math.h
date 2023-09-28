@@ -1,7 +1,5 @@
 #pragma once
 
-#define GLM_DEPTH_ZERO_TO_ONE
-#define GLM_FORCE_RADIANS
 #include <glm/gtx/string_cast.hpp>
 
 #include "glm/ext/matrix_clip_space.hpp"

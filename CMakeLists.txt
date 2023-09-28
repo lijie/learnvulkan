@@ -20,6 +20,9 @@ add_compile_definitions(VK_USE_PLATFORM_WIN32_KHR)
 # for vsprintf
 add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
 
+add_compile_definitions(GLM_FORCE_DEPTH_ZERO_TO_ONE)
+add_compile_definitions(GLM_FORCE_RADIANS)
+
 # ADD_LIBRARY(vulkan STATIC IMPORTED)
 # SET_TARGET_PROPERTIES(vulkan PROPERTIES IMPORTED_LOCATION C:/VulkanSDK/1.3.250.1/Lib/vulkan-1.lib)
 # include_directories(C:/VulkanSDK/1.3.250.1/Include)

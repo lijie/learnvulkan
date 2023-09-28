@@ -1,6 +1,6 @@
 #pragma once
 
-#include "glm/geometric.hpp"
+#include "lvk_math.h"
 #include "material.h"
 #include "transform.h"
 

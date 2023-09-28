@@ -12,7 +12,6 @@
 #include "base/vulkan_app.h"
 #include "base/vulkan_context.h"
 
-
 lvk::PrimitiveMesh test_lvk_mesh;
 
 namespace lvk {
@@ -49,14 +48,16 @@ void PbrBasicApp::InitScene() {
   // init scene
   Node n1 = {.transform =
                  {
-                     .translation{-1, 0, 0},
+                     .translation{0, 0, 0},
                      .rotation{0, 0, 0},
                      .scale{1, 1, 1},
                  },
              .mesh = 0,
              .material = 0,
              .materialParamters{
-                 .baseColor{1.0, 0.0, 0.0},
+                 .baseColor{1.0f, 0.765557f, 0.336057f},  // gold
+                 .roughness = 0.1f,
+                 .metallic = 1.0,
                  .textureList{0},
              }};
 
@@ -74,24 +75,24 @@ void PbrBasicApp::InitScene() {
              }};
 
   scene.AddNode(n1);
-  scene.AddNode(n2);
+  // scene.AddNode(n2);
 
   scene.AddLight(DirectionalLight::NewDirectionalLight(
-      Transform{.translation{5.0, 5.0, 5.0}, .rotation{0, 0, 0}, .scale{1.0, 1.0, 1.0}}, vec3f{1.0, 1.0, 1.0}));
+      Transform{.translation{5.0, 0.0, 5.0}, .rotation{0, 0, 0}, .scale{1.0, 1.0, 1.0}}, vec3f{1.0, 1.0, 1.0}));
 }
 
 void PbrBasicApp::Update(float deltaTime) {
   VulkanApp::Update(deltaTime);
 
-  auto n1 = scene.GetNode(0);
-  auto LastRotation = n1->Rotation();
-  LastRotation.y += deltaTime * 10;
-  n1->SetRotation(LastRotation);
+  // auto n1 = scene.GetNode(0);
+  // auto LastRotation = n1->Rotation();
+  // LastRotation.y += deltaTime * 10;
+  // n1->SetRotation(LastRotation);
 
-  auto n2 = scene.GetNode(1);
-  LastRotation = n2->Rotation();
-  LastRotation.z += deltaTime * 10;
-  n2->SetRotation(LastRotation);
+  // auto n2 = scene.GetNode(1);
+  // LastRotation = n2->Rotation();
+  // LastRotation.z += deltaTime * 10;
+  // n2->SetRotation(LastRotation);
 
 #if 0
   auto camera = scene.GetCamera();

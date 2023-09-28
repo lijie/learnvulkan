@@ -1,16 +1,15 @@
 #include "camera.h"
 
-#include <glm/gtx/string_cast.hpp>
+#include "lvk_math.h"
 
 #include "lvk_log.h"
-#include "math.h"
 
 namespace lvk {
 
 Camera::Camera() {
-  vec3f location = vec3f(0, 0, -4);
-  SetLocationAndRotation(location, vec3f(0, 0, 0));
-  SetPespective(45, 1280.0 / 720.0, 0.1, 10);
+  vec3f location = vec3f(0.0f, 0.0f, -6.0f);
+  SetLocationAndRotation(location, vec3f(0.0f, 0.0f, 0.0f));
+  SetPespective(60, 1280.0 / 720.0, 0.1, 256);
 }
 
 const CameraMatrix& Camera::GetCameraMaterix() {
@@ -34,10 +33,13 @@ void Camera::UpdateMatrix() {
   // DEBUG_LOG("camera matrix: {}", glm::to_string(localMatrix()));
   vec3f forward = GetForwardVector();
 
-  camera_materix_.proj = glm::perspective(glm::radians(45.0f), 1280.0f / 720.0f, 0.1f, 1000.0f);
+  camera_materix_.proj = glm::perspective(glm::radians(fov_), aspect_ratio_, near_, far_);
   // camera_materix_.proj[1][1] *= -1;
-  camera_materix_.view =
-      // glm::lookAt(glm::vec3(0.0f, 0.0f, 4.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-      glm::lookAt(location, location + forward, vec3f(0.0f, 1.0f, 0.0f));
+  auto r = glm::lookAt(location, location + forward, vec3f(0.0f, 1.0f, 0.0f));
+  auto t = glm::translate(glm::mat4(1.0f), -location);
+  camera_materix_.view = r * t;
+  // camera_materix_.view =
+  //     // glm::lookAt(glm::vec3(0.0f, 0.0f, 4.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+  //     glm::lookAt(location, location + forward, vec3f(0.0f, 1.0f, 0.0f));
 }
 }  // namespace lvk

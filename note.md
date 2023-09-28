@@ -54,3 +54,15 @@
 
 ### uniform buffer alignment
 - 似乎 uniform buffer struct 必须是 16B 对齐的, 所以引入 vec3 会导致一些很费解的对齐问题. 都使用 vec4/mat4 ?
+
+### 关于画面上下翻转
+- Vulkan 有着奇怪的NDC坐标, y轴是负的.
+- 不同的 sample 有着不同的解决方案
+  - 比如 gl_Position = -gl_Position
+  - 比如 vulkan sample 加载模型时直接翻转了模型顶点的 y 和法线的 y
+  - 还有例子是翻转project投影矩阵
+  - vulkan api 1.1 之后可以设置 viewport.height 为负数来实现翻转
+[参考这里](https://www.saschawillems.de/blog/2019/03/29/flipping-the-vulkan-viewport/)
+
+### 强制 glm 使用右手坐标系
+- 在makefile中定义 GLM_FORCE_DEPTH_ZERO_TO_ONE

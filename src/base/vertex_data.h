@@ -6,7 +6,7 @@
 #include <array>
 #include <vector>
 
-#include "glm/glm.hpp"
+#include "lvk_math.h"
 #include "vulkan_buffer.h"
 
 namespace lvk {

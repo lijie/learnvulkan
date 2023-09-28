@@ -14,6 +14,7 @@ layout (binding = 0) uniform UBOShared
 layout (binding = 1) uniform UBO 
 {
 	mat4 projection;
+	mat4 view;
 	mat4 model;
 } ubo;
 
@@ -32,8 +33,9 @@ void main()
 
 	vec3 worldPos = vec3(ubo.model * vec4(inPos, 1.0));
 
-	gl_Position = ubo.projection * ubo.model * vec4(inPos.xyz, 1.0);
+	gl_Position = ubo.projection * ubo.view * ubo.model * vec4(inPos.xyz, 1.0);
 
     vec4 pos = ubo.model * vec4(inPos, 1.0);
 	outNormal = mat3(inverse(transpose(ubo.model))) * inNormal;
+	outWorldPosition = worldPos;
 }

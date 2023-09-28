@@ -156,8 +156,9 @@ void VulkanContext::UpdateVertexUniformBuffers(Scene* scene) {
   // update model matrix
   scene->ForEachNode([this, camera_matrix](Node* n, int idx) {
     auto& ubo = uniformBuffers_.model[idx];
-    ubo.modelView = camera_matrix.view * n->localMatrix();
+    ubo.model = n->localMatrix();
     ubo.projection = camera_matrix.proj;
+    ubo.view = camera_matrix.view;
   });
 
   // update to gpu
@@ -170,6 +171,8 @@ void VulkanContext::UpdateFragmentUniformBuffers(Scene* scene) {
   scene->ForEachNode([this](Node* n, int idx) {
     auto& data = uniformBuffers_.fragment_data[idx];
     data.color = vec4f(n->materialParamters.baseColor, 1.0);
+    data.metallic = n->materialParamters.metallic;
+    data.roughness = n->materialParamters.roughness;
   });
 
   // update to gpu
@@ -273,7 +276,7 @@ VkResult VulkanContext::CreateInstance(bool enableValidation) {
   appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
   appInfo.pApplicationName = "Learn Vulkan";
   appInfo.pEngineName = "Learn Vulkan";
-  appInfo.apiVersion = VK_API_VERSION_1_0;
+  appInfo.apiVersion = VK_API_VERSION_1_2;
 
   std::vector<const char*> instanceExtensions = {VK_KHR_SURFACE_EXTENSION_NAME};
 

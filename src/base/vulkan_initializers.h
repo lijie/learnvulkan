@@ -337,7 +337,9 @@ inline VkRenderPassCreateInfo RenderPassCreateInfo() {
 inline VkViewport Viewport(float width, float height, float minDepth, float maxDepth) {
   VkViewport viewport{};
   viewport.width = width;
-  viewport.height = height;
+  viewport.height = -height;
+  viewport.x = 0;
+  viewport.y = height;
   viewport.minDepth = minDepth;
   viewport.maxDepth = maxDepth;
   return viewport;
