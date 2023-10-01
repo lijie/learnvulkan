@@ -36,17 +36,17 @@ void TriangleApp::InitScene() {
   };
 
   // init scene
-  Node n1 = {.transform =
-                 {
-                     .translation{0, 0, 0},
-                     .rotation{0, 0, 0},
-                     .scale{1, 1, 1},
-                 },
-             .mesh = 0,
-             .material = 0,
-             .materialParamters{
-                 .textureList{0},
-             }};
+  auto n1 = NewNode<Node>();
+  n1->transform = {
+      .translation{-1, 0, 0},
+      .rotation{0, 0, 0},
+      .scale{1, 1, 1},
+  };
+  n1->mesh = 0;
+  n1->material = 0;
+  n1->materialParamters = {
+      .textureList{0},
+  };
 
   scene.AddNode(n1);
 }

@@ -3,6 +3,7 @@
 #include "lvk_math.h"
 
 #include "lvk_log.h"
+#include "node.h"
 
 namespace lvk {
 
@@ -10,6 +11,7 @@ Camera::Camera() {
   vec3f location = vec3f(0.0f, 0.0f, -6.0f);
   SetLocationAndRotation(location, vec3f(0.0f, 0.0f, 0.0f));
   SetPespective(60, 1280.0 / 720.0, 0.1, 256);
+  node_type = NodeType::Camera;
 }
 
 const CameraMatrix& Camera::GetCameraMaterix() {

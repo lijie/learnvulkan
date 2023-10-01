@@ -93,7 +93,7 @@ void VulkanContext::CreateVulkanScene(Scene* scene, VulkanDevice* device) {
     vknode.vkMesh = &vkMeshList[i];
 
     LoadMaterial(&vknode, scene->GetResourceMaterial(node->material), device);
-    vknode.pipelineHandle = FindOrCreatePipeline();
+    vknode.pipelineHandle = FindOrCreatePipeline(*node, vknode);
   }
 
   PrepareUniformBuffers(scene, device);
@@ -523,11 +523,12 @@ void VulkanContext::BuildPipelines() {
   // todo
   CreatePipelineCache();
   // todo
-  pipelineList.resize(1);
+  pipelineList.resize(static_cast<std::size_t>(NodeType::MAX));
 
   std::vector<VkPipelineColorBlendAttachmentState> colorBlendAttachmentStates;
   colorBlendAttachmentStates.push_back(initializers::PipelineColorBlendAttachmentState(0xf, VK_FALSE));
 
+  // for general object
   VulkanPipelineBuilder()
       .dynamicStates({VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR})
       .primitiveTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
@@ -540,7 +541,25 @@ void VulkanContext::BuildPipelines() {
       .depthCompareOp(VK_COMPARE_OP_LESS_OR_EQUAL)
       .rasterizationSamples(VK_SAMPLE_COUNT_1_BIT)
       .shaderStages(GetVkNode(0)->shaderStages)
-      .build(device_->device(), pipelineCache_, PipelineLayout(), renderPass_, &pipelineList[0], "05-GraphicPipline");
+      .build(device_->device(), pipelineCache_, PipelineLayout(), renderPass_,
+             &pipelineList[static_cast<std::size_t>(NodeType::Object)], "05-GraphicPipline");
+#if 0
+  // for skybox
+  VulkanPipelineBuilder()
+      .dynamicStates({VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR})
+      .primitiveTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
+      .polygonMode(VK_POLYGON_MODE_FILL)
+      .vertexInputState(BuildVertexInputState())
+      .cullMode(VK_CULL_MODE_NONE)
+      .frontFace(VK_FRONT_FACE_COUNTER_CLOCKWISE)
+      .colorBlendAttachmentStates(colorBlendAttachmentStates)
+      .depthWriteEnable(true)
+      .depthCompareOp(VK_COMPARE_OP_LESS_OR_EQUAL)
+      .rasterizationSamples(VK_SAMPLE_COUNT_1_BIT)
+      .shaderStages(GetVkNode(0)->shaderStages)
+      .build(device_->device(), pipelineCache_, PipelineLayout(), renderPass_,
+             &pipelineList[static_cast<std::size_t>(NodeType::Skybox)], "05-GraphicPipline");
+#endif
 }
 
 VkDescriptorSet VulkanContext::AllocDescriptorSet(VulkanNode* vkNode) {
@@ -601,6 +620,11 @@ void VulkanContext::FindOrCreateDescriptorSet(VulkanNode* vkNode) {
   } else {
     vkNode->descriptorSet = iter->second;
   }
+}
+
+int VulkanContext::FindOrCreatePipeline(const Node& node, const VulkanNode& vkNode) {
+  // TODO: 目前假定 pipeline 都是预先创建好了的
+  return static_cast<std::size_t>(node.node_type);
 }
 
 void VulkanContext::InitSwapchain() { swapChain_.InitSurface(NULL, options_.window); }

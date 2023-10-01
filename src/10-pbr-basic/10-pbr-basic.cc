@@ -45,40 +45,20 @@ void PbrBasicApp::InitScene() {
       },
   };
 
-  // init scene
-  Node n1 = {.transform =
-                 {
-                     .translation{0, 0, 0},
-                     .rotation{0, 0, 0},
-                     .scale{1, 1, 1},
-                 },
-             .mesh = 0,
-             .material = 0,
-             .materialParamters{
-                 .baseColor{1.0f, 0.765557f, 0.336057f},  // gold
-                 .roughness = 0.5f,
-                 .metallic = 1.0,
-                 .textureList{0},
-             }};
-
-  Node n2 = {.transform =
-                 {
-                     .translation{+1, 0, 0},
-                     .rotation{0, 0, 0},
-                     .scale{1, 1, 1},
-                 },
-             .mesh = 0,
-             .material = 0,
-             .materialParamters{
-                 .baseColor{0.0, 1.0, 0.0},
-                 .textureList{1},
-             }};
-
+  auto n1 = NewNode<Node>();
+  n1->mesh = 0;
+  n1->material = 0;
+  n1->materialParamters = {
+      .baseColor{1.0f, 0.765557f, 0.336057f},  // gold
+      .roughness = 0.5f,
+      .metallic = 1.0,
+      .textureList{0},
+  };
   scene.AddNode(n1);
-  // scene.AddNode(n2);
 
-  scene.AddLight(DirectionalLight::NewDirectionalLight(
-      Transform{.translation{0.0, 0.0, -6.0}, .rotation{0, 0, 0}, .scale{1.0, 1.0, 1.0}}, vec3f{1.0, 1.0, 1.0}));
+  auto light = NewNode<DirectionalLight>(
+      Transform{.translation{0.0, 0.0, -6.0}, .rotation{0, 0, 0}, .scale{1.0, 1.0, 1.0}}, vec3f{1.0, 1.0, 1.0});
+  scene.AddNode(light);
 }
 
 void PbrBasicApp::Update(float deltaTime) {

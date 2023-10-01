@@ -15,6 +15,7 @@ namespace lvk {
 struct PrimitiveMesh;
 struct Node;
 class DirectionalLight;
+class LightSource;
 
 struct Texture {
   Texture() {}
@@ -34,8 +35,13 @@ struct Assets {};
 class Scene {
  public:
   Scene();
+  #if 0
   Node* AddNode(int meshIdx, int matIdx, const Transform& transform);
   Node* AddNode(const Node& from);
+  #endif
+
+  void AddNode(SNode node);
+
   void ForEachNode(std::function<void(Node*, int)> cb);
 
   void AddLight(std::unique_ptr<DirectionalLight> light);
@@ -43,11 +49,11 @@ class Scene {
   ~Scene();
 
   Node* GetNode(int idx);
-  size_t GetNodeCount() { return nodeList_.size(); }
+  size_t GetNodeCount() { return snodeList_.size(); }
   const CameraMatrix& GetCameraMatrix() { return default_camera_.GetCameraMaterix(); }
   Camera* GetCamera() { return &default_camera_; }
 
-  const std::vector<std::unique_ptr<DirectionalLight>>& GetAllLights() { return lightList_; }
+  const std::vector<std::shared_ptr<LightSource>>& GetAllLights() { return lightSourceList_; };
 
   // todo: resource manager
   std::vector<PrimitiveMesh> meshList;
@@ -59,8 +65,8 @@ class Scene {
   const Material* GetResourceMaterial(int handle);
 
  protected:
-  std::vector<Node*> nodeList_;
-  std::vector<std::unique_ptr<DirectionalLight>> lightList_;
+  std::vector<SNode> snodeList_;
+  std::vector<std::shared_ptr<LightSource>> lightSourceList_;
   Camera default_camera_;
 };
 

@@ -37,29 +37,29 @@ void TwoTexturesApp::InitScene() {
   };
 
   // init scene
-  Node n1 = {.transform =
-                 {
-                     .translation{-1, 0, 0},
-                     .rotation{0, 0, 0},
-                     .scale{1, 1, 1},
-                 },
-             .mesh = 0,
-             .material = 0,
-             .materialParamters{
-                 .textureList{0},
-             }};
+  auto n1 = NewNode<Node>();
+  n1->transform = {
+      .translation{-1, 0, 0},
+      .rotation{0, 0, 0},
+      .scale{1, 1, 1},
+  };
+  n1->mesh = 0;
+  n1->material = 0;
+  n1->materialParamters = {
+      .textureList{0},
+  };
 
-  Node n2 = {.transform =
-                 {
-                     .translation{+1, 0, 0},
-                     .rotation{0, 0, 0},
-                     .scale{1, 1, 1},
-                 },
-             .mesh = 0,
-             .material = 0,
-             .materialParamters{
-                 .textureList{1},
-             }};
+  auto n2 = NewNode<Node>();
+  n2->transform = {
+      .translation{+1, 0, 0},
+      .rotation{0, 0, 0},
+      .scale{1, 1, 1},
+  };
+  n2->mesh = 0;
+  n2->material = 0;
+  n2->materialParamters = {
+      .textureList{1},
+  };
 
   scene.AddNode(n1);
   scene.AddNode(n2);

@@ -81,4 +81,5 @@ add_vulkan_target(07-two-textures)
 add_vulkan_target(08-move-camera)
 add_vulkan_target(09-gltf)
 add_vulkan_target(10-pbr-basic)
+add_vulkan_target(11-pbr-ibl)
 

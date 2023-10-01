@@ -8,6 +8,7 @@
 
 #include "lvk_math.h"
 #include "primitives.h"
+#include "node.h"
 #include "vulkan/vulkan.h"
 #include "vulkan/vulkan_core.h"
 #include "vulkan_buffer.h"
@@ -237,7 +238,7 @@ class VulkanContext {
   VkResult CreateInstance(bool enableValidation);
   VkPipelineShaderStageCreateInfo LoadShader(std::string fileName, VkShaderStageFlagBits stage, VulkanDevice *device);
   bool LoadMaterial(VulkanNode *vkNode, const Material *mat, VulkanDevice *device);
-  int FindOrCreatePipeline() { return 0; }
+  int FindOrCreatePipeline(const Node& node, const VulkanNode& vkNode);
   void FindOrCreateDescriptorSet(VulkanNode *vkNode);
   // void BuildPipelines();
 };

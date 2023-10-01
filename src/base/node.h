@@ -1,11 +1,26 @@
 #pragma once
 
+#include <stdint.h>
+
+#include <memory>
+
 #include "lvk_math.h"
 #include "material.h"
 #include "transform.h"
 
-
 namespace lvk {
+
+enum class NodeType {
+  Object,
+  Camera,
+  LightSource,
+  Skybox,
+  MAX,
+};
+
+struct NodeFlags {
+  uint32_t EnableRender : 1 = 1;
+};
 
 // render node in scene
 struct Node {
@@ -14,6 +29,16 @@ struct Node {
   int material{0};
   MaterialParamters materialParamters;
   mat4f matrix{1.0};
+
+  NodeType node_type{NodeType::Object};
+  NodeFlags flags;
+
+  Node() {}
+  Node(const Transform& in_transform, NodeType in_node_type) {
+    transform = in_transform;
+    node_type = in_node_type;
+  }
+  Node(const Transform& in_transform) : Node(in_transform, NodeType::Object) {}
 
   mat4f localMatrix() {
 #if 0
@@ -51,21 +76,15 @@ struct Node {
     ClampRotation(transform.rotation.z);
   }
 
-  void SetLocation(const vec3f& in) {
-    transform.translation = in;
-  }
+  void SetLocation(const vec3f& in) { transform.translation = in; }
 
   void SetLocationAndRotation(const vec3f& location, const vec3f rotation) {
     transform.translation = location;
     SetRotation(rotation);
   }
 
-  vec3f GetLocation() {
-    return transform.translation;
-  }
-  vec3f GetRotation() {
-    return transform.rotation;
-  }
+  vec3f GetLocation() { return transform.translation; }
+  vec3f GetRotation() { return transform.rotation; }
 
   vec3f GetForwardVector() {
     localMatrix();
@@ -76,4 +95,15 @@ struct Node {
     return glm::normalize(vec3f(matrix[0][0], matrix[0][1], matrix[0][2]));
   }
 };
+
+typedef std::shared_ptr<Node> SNode;
+
+template <typename T, typename... TArgs>
+static SNode NewNode(const Transform& transform = Transform::Identity, TArgs... args) {
+  // ...
+  // ...
+  auto node = std::make_shared<T>(transform, args...);
+  return node;
+}
+
 }  // namespace lvk
