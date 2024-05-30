@@ -66,3 +66,60 @@
 
 ### 强制 glm 使用右手坐标系
 - 在makefile中定义 GLM_FORCE_DEPTH_ZERO_TO_ONE
+
+### sType & pNext
+* vulkan 的 struct, 很多都包含两个特殊的字段 `sType` 和 `pNext`
+* sType 保存了结构体的类型id, 类似网络协议中的 cmd
+* pNext 用于扩展 struct, 当需要对 struct 新增字段时, 为了保持向前兼容, 新增的内容可以用一个新的 struct 描述, 并存储在 pNext 指针中.
+```C++
+// 一开始 VkDeviceCreateInfo 是这样的:
+typedef struct VkDeviceCreateInfo {
+    VkStructureType                    sType;
+    const void*                        pNext;
+    VkDeviceCreateFlags                flags;
+    uint32_t                           queueCreateInfoCount;
+    const VkDeviceQueueCreateInfo*     pQueueCreateInfos;
+    uint32_t                           enabledLayerCount;
+    const char* const*                 ppEnabledLayerNames;
+    uint32_t                           enabledExtensionCount;
+    const char* const*                 ppEnabledExtensionNames;
+    const VkPhysicalDeviceFeatures*    pEnabledFeatures;
+} VkDeviceCreateInfo;
+
+// 后来我们想在创建逻辑设备时指定 features, 但是出于对兼容的考虑, 不能修改 VkDeviceCreateInfo 了, 于是创建了一个新的 struct:
+typedef struct VkPhysicalDeviceFeatures2 {
+    VkStructureType             sType;
+    void*                       pNext;
+    VkPhysicalDeviceFeatures    features;
+} VkPhysicalDeviceFeatures2;
+
+// 于是我们创建 VkDeviceCreateInfo 时变成这样:
+auto CreateInfo = VkDeviceCreateInfo();
+auto Feature = VkPhysicalDeviceFeatures2();
+CreateInfo.pNext = &Feature
+
+// 这样我们扩展了 VkDeviceCreateInfo 的功能, 但是也不修改 VkDeviceCreateInfo 本身. 旧代码可以保持兼容, 新代码可以识别新的数据并处理.
+```
+
+### Command Pool & Command Buffer
+
+* Command Pool 就是 Command Buffer 的分配器
+  * vulkan 中几乎所有的 Pool 都是不建议跨线程使用的. [see here](https://github.com/ARM-software/vulkan_best_practice_for_mobile_developers/blob/master/samples/performance/command_buffer_usage/command_buffer_usage_tutorial.md)
+
+#### 为什么会需要创建多个 Command Buffer ?
+* 比如 Sasha Williams 的 vulkan sample, Command Buffer 的数量总是等于 swap chain image count 的数量.
+* [参考链接](https://community.khronos.org/t/why-need-create-framebuffers-for-swapchain-count-images/6911)
+
+### Vulkan 一般初始化流程
+* 使用 vkCreateInstance 创建 Instance
+  * extension 和 layer 在 VkInstanceCreateInfo 中指定
+* 使用 vkCreateDebugUtilsMessengerEXT 创建 debug message object
+* 使用 vkCreateDevice 创建逻辑设备(logical device)
+  * VkDeviceCreateInfo 描述了 logical device 的创建信息
+  * 需要使用 vkEnumeratePhysicalDevices 获取所有物理设备(VkPhysicalDevice), 并使用其中一个来创建logical device
+  * 创建 logical device 同时也需要场景关联的 queues
+    * VkDeviceQueueCreateInfo 描述了需要创建的 queue 信息
+    * 最常用的 queue 有 VK_QUEUE_GRAPHICS_BIT 和 VK_QUEUE_COMPUTE_BIT
+    * 通过 VkPhysicalDeviceFeatures2 指定需要开启的 feature
+  * 为 Graphics queue 创建 Command Pool
+    * 使用 vkCreateCommandPool, VkCommandPoolCreateInfo 创建 Command Pool
