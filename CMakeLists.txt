@@ -1,17 +1,9 @@
 cmake_minimum_required(VERSION 3.12)
 project(learnvulkan)
 
-#include_directories(${CMAKE_SOURCE_DIR}/deps/glm-0.9.9.9)
-#include_directories(${CMAKE_SOURCE_DIR}/deps/assimp/include)
-
-# add_library(toy 
-# 	common/shader.cc common/camera.cc src/glad.c common/lo_common.cc common/shape.cc
-# 	common/material.cc common/model.cc common/mesh.cc common/scene.cc common/cubemap.cc
-# 	common/instance_renderer.cc common/directional_light.cc)
-# target_include_directories(toy PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/common)
-
 find_package(Vulkan)
 include_directories(${Vulkan_INCLUDE_DIR})
+set(GLSLC ${Vulkan_INCLUDE_DIR}/../Bin/glslc.exe)
 
 include_directories(${CMAKE_SOURCE_DIR}/src)
 
@@ -22,6 +14,8 @@ add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
 
 add_compile_definitions(GLM_FORCE_DEPTH_ZERO_TO_ONE)
 add_compile_definitions(GLM_FORCE_RADIANS)
+add_compile_definitions(GLM_ENABLE_EXPERIMENTAL)
+
 
 # ADD_LIBRARY(vulkan STATIC IMPORTED)
 # SET_TARGET_PROPERTIES(vulkan PROPERTIES IMPORTED_LOCATION C:/VulkanSDK/1.3.250.1/Lib/vulkan-1.lib)
@@ -54,6 +48,14 @@ else ()
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
 endif (true)
 
+macro(add_shader_target)
+	add_custom_command(
+		OUTPUT ${CMAKE_SOURCE_DIR}/${ARGV2}
+		COMMAND ${GLSLC} ${CMAKE_SOURCE_DIR}/${ARGV1} -o ${CMAKE_SOURCE_DIR}/${ARGV2}
+	)
+	add_custom_target(${ARGV0} DEPENDS ${CMAKE_SOURCE_DIR}/${ARGV2})
+endmacro(add_shader_target)
+
 macro(add_vulkan_target)
 	add_executable(${ARGV0} src/${ARGV0}/${ARGV0}.cc)
 	target_include_directories(${ARGV0} PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/common)
@@ -70,6 +72,18 @@ macro(add_win32_vulkan_target)
 	# set_target_properties(${ARGV0} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/examples/runtime")
 endmacro(add_win32_vulkan_target)
 
+macro(add_vulkan_target_with_shader)
+	add_executable(${ARGV0} src/${ARGV0}/${ARGV0}.cc)
+	target_include_directories(${ARGV0} PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/common)
+	target_link_libraries(${ARGV0} LINK_PUBLIC ${dep_libs})
+	add_shader_target(${ARGV0}_vs src/${ARGV0}/${ARGV0}.vert build/${ARGV0}.vert.spv)
+	add_shader_target(${ARGV0}_ps src/${ARGV0}/${ARGV0}.frag build/${ARGV0}.frag.spv)
+	add_dependencies(${ARGV0} ${ARGV0}_vs)
+	add_dependencies(${ARGV0} ${ARGV0}_ps)
+	# set_target_properties(${ARGV0} PROPERTIES LINK_FLAGS "/SUBSYSTEM:WINDOWS /ENTRY:\"mainCRTStartup\"")
+	# set_target_properties(${ARGV0} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/examples/runtime")
+endmacro(add_vulkan_target_with_shader)
+
 add_vulkan_target(00-test)
 add_vulkan_target(01-drawing-a-triangle)
 add_vulkan_target(02-vertex-buffer)
@@ -80,6 +94,6 @@ add_vulkan_target(06-two-cubes)
 add_vulkan_target(07-two-textures)
 add_vulkan_target(08-move-camera)
 add_vulkan_target(09-gltf)
-add_vulkan_target(10-pbr-basic)
-add_vulkan_target(11-pbr-ibl)
+add_vulkan_target_with_shader(10-pbr-basic)
+add_vulkan_target_with_shader(11-pbr-ibl)
 

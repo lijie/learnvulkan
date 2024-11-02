@@ -1,3 +1,10 @@
+### 环境装备
+- LLVM
+- cmake
+- mysys2(常用gnu工具, make, 等)
+- Vulkan SDK
+- Python
+
 ### lldb 提示 python310.dll 找不到
 
 - 先安装一个 python310, windows store 就可以

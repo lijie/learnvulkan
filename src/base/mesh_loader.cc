@@ -25,7 +25,6 @@ static void CopyToPrimitiveMeshIndices(lvk::PrimitiveMesh* lvk_mesh, const tinyg
   const tinygltf::Buffer& buffer = model.buffers[bufferView.buffer];
   int byteStride = indexAccessor.ByteStride(model.bufferViews[indexAccessor.bufferView]);
 
-  lvk_mesh->vertices.resize(indexAccessor.count);
   lvk_mesh->indices.resize(indexAccessor.count);
   for (int j = 0; j < lvk_mesh->indices.size(); j++) {
     memcpy(&lvk_mesh->indices[j], &buffer.data.at(0) + bufferView.byteOffset + j * byteStride, byteStride);

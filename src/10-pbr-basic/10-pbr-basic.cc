@@ -40,8 +40,8 @@ void PbrBasicApp::InitScene() {
   };
   scene.materialList = {
       {
-          "10-vert.spv",
-          "10-frag.spv",
+          "10-pbr-basic.vert.spv",
+          "10-pbr-basic.frag.spv",
       },
   };
 
