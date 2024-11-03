@@ -24,6 +24,9 @@ namespace lvk {
 namespace tools {
 std::string ErrorString(VkResult result);
 
+std::string GetAssetPath();
+std::string GetModelPath();
+
 // Display error message and exit on fatal error
 void ExitFatal(const std::string& message, int32_t exitCode);
 void ExitFatal(const std::string& message, VkResult resultCode);

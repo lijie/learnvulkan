@@ -23,6 +23,9 @@ class VulkanBuffer {
 
   void* mapped() { return mapped_; }
 
+  static VulkanBuffer* Create(VulkanDevice *device, VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags,
+                              VkDeviceSize size, const void* data = nullptr);
+
   VkDescriptorBufferInfo descriptor_;
 
  private:

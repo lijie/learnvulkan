@@ -6,6 +6,7 @@
 #include "base/scene.h"
 #include "base/vulkan_app.h"
 #include "base/vulkan_context.h"
+#include "base/vulkan_tools.h"
 
 lvk::PrimitiveMesh test_lvk_mesh;
 
@@ -18,7 +19,8 @@ class PbrBasicApp : public VulkanApp {
 };
 
 void PbrBasicApp::InitScene() {
-  auto cube_mesh = MeshLoader::LoadMesh("..\\assets\\models\\teapot.gltf");
+  // auto cube_mesh = MeshLoader::LoadMesh("..\\assets\\models\\teapot.gltf");
+  auto cube_mesh = MeshLoader::LoadMesh(tools::GetModelPath() + "teapot.gltf");
   // prepare resource
   scene.meshList = {
       // primitive::cube(),

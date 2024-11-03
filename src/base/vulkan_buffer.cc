@@ -3,6 +3,10 @@
 #include <assert.h>
 #include <memory.h>
 
+#include "vulkan_device.h"
+#include "vulkan_tools.h"
+
+
 namespace lvk {
 
 VkResult VulkanBuffer::Map(VkDeviceSize size, VkDeviceSize offset) {
@@ -17,9 +21,7 @@ void VulkanBuffer::Unmap() {
   }
 }
 
-VkResult VulkanBuffer::Bind(VkDeviceSize offset) {
-  return vkBindBufferMemory(device_, buffer_, memory_, offset);
-}
+VkResult VulkanBuffer::Bind(VkDeviceSize offset) { return vkBindBufferMemory(device_, buffer_, memory_, offset); }
 
 void VulkanBuffer::SetupDescriptor(VkDeviceSize size, VkDeviceSize offset) {
   descriptor_.offset = offset;
@@ -50,7 +52,7 @@ VkResult VulkanBuffer::Invalidate(VkDeviceSize size, VkDeviceSize offset) {
   return vkInvalidateMappedMemoryRanges(device_, 1, &mappedRange);
 }
 
-void VulkanBuffer::Update(const uint8_t *data, const VkDeviceSize size, const VkDeviceSize offset) {
+void VulkanBuffer::Update(const uint8_t* data, const VkDeviceSize size, const VkDeviceSize offset) {
   Map(size, offset);
   CopyTo(data, size);
   Unmap();
@@ -63,6 +65,15 @@ void VulkanBuffer::Destroy() {
   if (memory_) {
     vkFreeMemory(device_, memory_, nullptr);
   }
+
+  delete this;
+}
+
+VulkanBuffer* Create(VulkanDevice* device, VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags,
+                     VkDeviceSize size, const void* data = nullptr) {
+  VulkanBuffer* buffer = new VulkanBuffer();
+  VK_CHECK_RESULT(device->CreateBuffer(usageFlags, memoryPropertyFlags, buffer, size, data));
+  return buffer;
 }
 
 }  // namespace lvk

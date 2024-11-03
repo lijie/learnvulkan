@@ -21,11 +21,19 @@ add_compile_definitions(GLM_ENABLE_EXPERIMENTAL)
 # SET_TARGET_PROPERTIES(vulkan PROPERTIES IMPORTED_LOCATION C:/VulkanSDK/1.3.250.1/Lib/vulkan-1.lib)
 # include_directories(C:/VulkanSDK/1.3.250.1/Include)
 
+set(IMGUI_SOURCE
+	deps/imgui/imgui_demo.cpp
+	deps/imgui/imgui_draw.cpp
+	deps/imgui/imgui_tables.cpp
+	deps/imgui/imgui_widgets.cpp
+	deps/imgui/imgui.cpp
+)
+
 add_library(base
 	src/base/vulkan_device.cc src/base/vulkan_buffer.cc src/base/vulkan_initializers.cc src/base/vulkan_tools.cc src/base/vulkan_app.cc src/base/vulkan_debug.cc
 	src/base/vulkan_swapchain.cc src/base/vulkan_pipelinebuilder.cc src/base/vertex_data.cc src/base/vulkan_texture.cc src/base/primitives.cc src/base/scene.cc
 	src/base/vulkan_context.cc src/base/window.cc src/base/transform.cc src/base/camera.cc src/base/material.cc src/base/lvk_math.cc src/base/input.cc
-	src/base/mesh_loader.cc src/base/directional_light.cc
+	src/base/mesh_loader.cc src/base/directional_light.cc ${IMGUI_SOURCE}
 )
 target_include_directories(base PRIVATE ${CMAKE_SOURCE_DIR}/src/base)
 
@@ -36,6 +44,7 @@ if (true)
 
 	include_directories(${CMAKE_SOURCE_DIR}/deps/stb)
 	include_directories(${CMAKE_SOURCE_DIR}/deps/gltf)
+	include_directories(${CMAKE_SOURCE_DIR}/deps/imgui)
 
 	# ADD_LIBRARY(assimp STATIC IMPORTED)
 	# SET_TARGET_PROPERTIES(assimp PROPERTIES IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/deps/assimp/lib/assimp-vc142-mtd.lib)

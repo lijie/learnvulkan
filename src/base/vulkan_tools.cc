@@ -46,6 +46,14 @@ std::string ErrorString(VkResult result) {
   }
 }
 
+std::string GetAssetPath() {
+  return "./../assets/";
+}
+
+std::string GetModelPath() {
+  return GetAssetPath() + "models/";
+}
+
 void ExitFatal(const std::string& message, int32_t exitCode) {
 #if defined(_WIN32)
   if (!errorModeSilent) {
