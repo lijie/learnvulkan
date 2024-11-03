@@ -207,7 +207,12 @@ void VulkanApp::RenderLoop() {
 
 std::string VulkanApp::GetShadersPath() const { return ""; }
 
-void VulkanApp::Prepare() {}
+void VulkanApp::Prepare() {
+  InitScene();
+  context_->CreateVulkanScene(&scene, vulkanDevice);
+  context_->BuildCommandBuffers(&scene);
+  prepared = true;
+}
 
 std::string VulkanApp::GetWindowTitle() {
   std::string device(deviceProperties.deviceName);
@@ -220,6 +225,12 @@ std::string VulkanApp::GetWindowTitle() {
 }
 
 void VulkanApp::HandleMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {}
+
+void VulkanApp::Render(double deltaTime) {
+  if (!prepared) return;
+  Update(deltaTime);
+  context_->Draw(&scene);
+}
 
 void VulkanApp::Update(float delta_time) {
   if (!prepared) return;

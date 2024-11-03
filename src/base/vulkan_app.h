@@ -117,7 +117,7 @@ class VulkanApp {
   // void SetupRenderPass();
   // void CreatePipelineCache();
   // void SetupFrameBuffer();
-  virtual void Render(double deltaTime = 0) = 0;
+  virtual void Render(double deltaTime = 0);
   void NextFrame(double deltaTime);
   void PrepareFrame();
   void SubmitFrame();
@@ -130,9 +130,12 @@ class VulkanApp {
   std::string GetShadersPath() const;
   VkPipelineShaderStageCreateInfo LoadShader(std::string fileName, VkShaderStageFlagBits stage);
 
+ protected:
+  virtual void InitScene() {}
+
  public:
   static std::vector<const char *> args;
-
+  
   virtual void Prepare();
   void RenderLoop();
   bool InitVulkan();
