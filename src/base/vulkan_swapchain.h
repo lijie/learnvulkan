@@ -3,6 +3,7 @@
 #include <vector>
 
 #include "vulkan/vulkan.h"
+#include "vulkan/vulkan_core.h"
 
 namespace lvk {
 
@@ -44,5 +45,6 @@ class VulkanSwapchain {
 
   uint32_t queueNodeIndex() { return queueNodeIndex_; }
   uint32_t imageCount() { return imageCount_; }
+  VkFormat colorFormat() { return colorFormat_; }
 };
 }  // namespace lvk

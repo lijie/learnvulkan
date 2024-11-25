@@ -176,6 +176,7 @@ void VulkanApp::NextFrame(double deltaTime) {
   // auto tStart = std::chrono::high_resolution_clock::now();
   Render(deltaTime);
   frameCounter++;
+  UpdateUI();
 }
 
 void VulkanApp::RenderLoop() {
@@ -237,6 +238,10 @@ void VulkanApp::Update(float delta_time) {
   if (camera_move_input_) {
     camera_move_input_->Update(delta_time);
   }
+}
+
+void VulkanApp::UpdateUI() {
+  
 }
 
 }  // namespace lvk

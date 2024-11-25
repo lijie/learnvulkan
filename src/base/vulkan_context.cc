@@ -846,5 +846,19 @@ void VulkanContext::Prepare() {
   SetupDepthStencil();
   SetupRenderPass();
   SetupFrameBuffer();
+
+  // ui
+  if (1) {
+	  ui.device = device_;
+	  ui.queue = queue_;
+	  ui.shaders = {
+		  LoadShader("uioverlay.vert.spv", VK_SHADER_STAGE_VERTEX_BIT, device_),
+		  LoadShader("uioverlay.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT, device_),
+	  };
+	  ui.PrepareResources();
+	  ui.PreparePipeline(pipelineCache_, renderPass_, swapChain_.colorFormat(), options_.depthFormat);
+  }
+  // ui end
+
 }
 }  // namespace lvk

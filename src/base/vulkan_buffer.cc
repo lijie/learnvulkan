@@ -69,8 +69,8 @@ void VulkanBuffer::Destroy() {
   delete this;
 }
 
-VulkanBuffer* Create(VulkanDevice* device, VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags,
-                     VkDeviceSize size, const void* data = nullptr) {
+VulkanBuffer* VulkanBuffer::Create(VulkanDevice* device, VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags,
+                     VkDeviceSize size, const void* data) {
   VulkanBuffer* buffer = new VulkanBuffer();
   VK_CHECK_RESULT(device->CreateBuffer(usageFlags, memoryPropertyFlags, buffer, size, data));
   return buffer;

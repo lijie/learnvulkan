@@ -1,7 +1,6 @@
 #pragma once
 
 #include <array>
-#include <map>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -9,12 +8,12 @@
 #include "lvk_math.h"
 #include "primitives.h"
 #include "node.h"
-#include "vulkan/vulkan.h"
 #include "vulkan/vulkan_core.h"
 #include "vulkan_buffer.h"
 #include "vulkan_device.h"
 #include "vulkan_swapchain.h"
 #include "vulkan_texture.h"
+#include "vulkan_ui.h"
 
 namespace lvk {
 class VulkanDevice;
@@ -234,6 +233,8 @@ class VulkanContext {
   // caches
   // std::map<DescriptorSetKey, VkDescriptorSet> descriptorSetCache_;
   std::unordered_map<DescriptorSetKey, VkDescriptorSet, DescriptorSetKey::HashFunction> descriptorSetCache_;
+
+  VulkanUI ui;
 
   VkResult CreateInstance(bool enableValidation);
   VkPipelineShaderStageCreateInfo LoadShader(std::string fileName, VkShaderStageFlagBits stage, VulkanDevice *device);

@@ -16,6 +16,7 @@
 // #include "vulkan/vulkan.h"
 #include "scene.h"
 #include "vulkan_swapchain.h"
+#include "vulkan_ui.h"
 
 
 namespace lvk {
@@ -132,6 +133,7 @@ class VulkanApp {
 
  protected:
   virtual void InitScene() {}
+  virtual void UpdateUI();
 
  public:
   static std::vector<const char *> args;

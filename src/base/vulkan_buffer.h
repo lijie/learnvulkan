@@ -9,6 +9,7 @@ class VulkanBuffer {
  public:
   void set_deivce(VkDevice device) { device_ = device; }
   VkBuffer buffer() { return buffer_; }
+  const VkBuffer * bufferp() { return &buffer_; }
   VkDeviceMemory memory() { return memory_; }
   VkResult Map(VkDeviceSize size = VK_WHOLE_SIZE, VkDeviceSize offset = 0);
   void Unmap();

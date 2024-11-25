@@ -124,6 +124,16 @@ inline VkDescriptorSetLayoutCreateInfo DescriptorSetLayoutCreateInfo(const VkDes
   return descriptorSetLayoutCreateInfo;
 }
 
+inline VkDescriptorSetLayoutCreateInfo DescriptorSetLayoutCreateInfo(
+	const std::vector<VkDescriptorSetLayoutBinding>& bindings)
+{
+	VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo{};
+	descriptorSetLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	descriptorSetLayoutCreateInfo.pBindings = bindings.data();
+	descriptorSetLayoutCreateInfo.bindingCount = static_cast<uint32_t>(bindings.size());
+	return descriptorSetLayoutCreateInfo;
+}
+
 inline VkPipelineLayoutCreateInfo PipelineLayoutCreateInfo(const VkDescriptorSetLayout *pSetLayouts,
                                                            uint32_t setLayoutCount = 1) {
   VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
@@ -298,6 +308,15 @@ inline VkDescriptorSetAllocateInfo DescriptorSetAllocateInfo(VkDescriptorPool de
   return descriptorSetAllocateInfo;
 }
 
+inline VkDescriptorImageInfo DescriptorImageInfo(VkSampler sampler, VkImageView imageView, VkImageLayout imageLayout)
+{
+	VkDescriptorImageInfo descriptorImageInfo {};
+	descriptorImageInfo.sampler = sampler;
+	descriptorImageInfo.imageView = imageView;
+	descriptorImageInfo.imageLayout = imageLayout;
+	return descriptorImageInfo;
+}
+
 inline VkWriteDescriptorSet WriteDescriptorSet(VkDescriptorSet dstSet, VkDescriptorType type, uint32_t binding,
                                                VkDescriptorBufferInfo *bufferInfo, uint32_t descriptorCount = 1) {
   VkWriteDescriptorSet writeDescriptorSet{};
@@ -443,6 +462,18 @@ inline VkResult CreateComputePipeline(VkDevice device, VkPipelineCache pipelineC
       .basePipelineIndex = -1,
   };
   return vkCreateComputePipelines(device, pipelineCache, 1, &ci, NULL, outPipeline);
+}
+
+inline VkPushConstantRange PushConstantRange(
+	VkShaderStageFlags stageFlags,
+	uint32_t size,
+	uint32_t offset)
+{
+	VkPushConstantRange pushConstantRange {};
+	pushConstantRange.stageFlags = stageFlags;
+	pushConstantRange.offset = offset;
+	pushConstantRange.size = size;
+	return pushConstantRange;
 }
 
 }  // namespace initializers

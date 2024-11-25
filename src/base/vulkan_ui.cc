@@ -121,10 +121,10 @@ void VulkanUI::PrepareResources() {
   stagingBuffer->Update(fontData, uploadSize);
 
   // Copy buffer data to font image
-  VkCommandBuffer copyCmd = device->createCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
+  VkCommandBuffer copyCmd = device->CreateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
 
   // Prepare for transfer
-  vks::tools::setImageLayout(copyCmd, fontImage, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_UNDEFINED,
+  lvk::tools::SetImageLayout(copyCmd, fontImage, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_UNDEFINED,
                              VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_PIPELINE_STAGE_HOST_BIT,
                              VK_PIPELINE_STAGE_TRANSFER_BIT);
 
@@ -136,17 +136,17 @@ void VulkanUI::PrepareResources() {
   bufferCopyRegion.imageExtent.height = texHeight;
   bufferCopyRegion.imageExtent.depth = 1;
 
-  vkCmdCopyBufferToImage(copyCmd, stagingBuffer.buffer, fontImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1,
+  vkCmdCopyBufferToImage(copyCmd, stagingBuffer->buffer(), fontImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1,
                          &bufferCopyRegion);
 
   // Prepare for shader read
-  vks::tools::setImageLayout(copyCmd, fontImage, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+  lvk::tools::SetImageLayout(copyCmd, fontImage, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                              VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_PIPELINE_STAGE_TRANSFER_BIT,
                              VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
 
-  device->flushCommandBuffer(copyCmd, queue, true);
+  device->FlushCommandBuffer(copyCmd, queue, true);
 
-  stagingBuffer.destroy();
+  stagingBuffer->Destroy();
 
   // Font texture Sampler
   VkSamplerCreateInfo samplerInfo = initializers::SamplerCreateInfo();
@@ -161,26 +161,26 @@ void VulkanUI::PrepareResources() {
 
   // Descriptor pool
   std::vector<VkDescriptorPoolSize> poolSizes = {
-      vks::initializers::descriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1)};
-  VkDescriptorPoolCreateInfo descriptorPoolInfo = vks::initializers::descriptorPoolCreateInfo(poolSizes, 2);
+      lvk::initializers::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1)};
+  VkDescriptorPoolCreateInfo descriptorPoolInfo = lvk::initializers::DescriptorPoolCreateInfo(poolSizes, 2);
   VK_CHECK_RESULT(vkCreateDescriptorPool(device->device(), &descriptorPoolInfo, nullptr, &descriptorPool));
 
   // Descriptor set layout
   std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
-      vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+      lvk::initializers::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                                                     VK_SHADER_STAGE_FRAGMENT_BIT, 0),
   };
   VkDescriptorSetLayoutCreateInfo descriptorLayout =
-      vks::initializers::descriptorSetLayoutCreateInfo(setLayoutBindings);
+      lvk::initializers::DescriptorSetLayoutCreateInfo(setLayoutBindings);
   VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device->device(), &descriptorLayout, nullptr, &descriptorSetLayout));
 
   // Descriptor set
   VkDescriptorSetAllocateInfo allocInfo =
-      vks::initializers::descriptorSetAllocateInfo(descriptorPool, &descriptorSetLayout, 1);
+      lvk::initializers::DescriptorSetAllocateInfo(descriptorPool, &descriptorSetLayout, 1);
   VK_CHECK_RESULT(vkAllocateDescriptorSets(device->device(), &allocInfo, &descriptorSet));
   VkDescriptorImageInfo fontDescriptor =
-      vks::initializers::descriptorImageInfo(sampler, fontView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-  std::vector<VkWriteDescriptorSet> writeDescriptorSets = {vks::initializers::writeDescriptorSet(
+      lvk::initializers::DescriptorImageInfo(sampler, fontView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+  std::vector<VkWriteDescriptorSet> writeDescriptorSets = {lvk::initializers::WriteDescriptorSet(
       descriptorSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 0, &fontDescriptor)};
   vkUpdateDescriptorSets(device->device(), static_cast<uint32_t>(writeDescriptorSets.size()),
                          writeDescriptorSets.data(), 0, nullptr);
@@ -192,18 +192,18 @@ void VulkanUI::PreparePipeline(const VkPipelineCache pipelineCache, const VkRend
   // Pipeline layout
   // Push constants for UI rendering parameters
   VkPushConstantRange pushConstantRange =
-      vks::initializers::pushConstantRange(VK_SHADER_STAGE_VERTEX_BIT, sizeof(PushConstBlock), 0);
+      lvk::initializers::PushConstantRange(VK_SHADER_STAGE_VERTEX_BIT, sizeof(PushConstBlock), 0);
   VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo =
-      vks::initializers::pipelineLayoutCreateInfo(&descriptorSetLayout, 1);
+      lvk::initializers::PipelineLayoutCreateInfo(&descriptorSetLayout, 1);
   pipelineLayoutCreateInfo.pushConstantRangeCount = 1;
   pipelineLayoutCreateInfo.pPushConstantRanges = &pushConstantRange;
   VK_CHECK_RESULT(vkCreatePipelineLayout(device->device(), &pipelineLayoutCreateInfo, nullptr, &pipelineLayout));
 
   // Setup graphics pipeline for UI rendering
   VkPipelineInputAssemblyStateCreateInfo inputAssemblyState =
-      vks::initializers::pipelineInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 0, VK_FALSE);
+      lvk::initializers::PipelineInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 0, VK_FALSE);
 
-  VkPipelineRasterizationStateCreateInfo rasterizationState = vks::initializers::pipelineRasterizationStateCreateInfo(
+  VkPipelineRasterizationStateCreateInfo rasterizationState = lvk::initializers::PipelineRasterizationStateCreateInfo(
       VK_POLYGON_MODE_FILL, VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE);
 
   // Enable blending
@@ -219,21 +219,21 @@ void VulkanUI::PreparePipeline(const VkPipelineCache pipelineCache, const VkRend
   blendAttachmentState.alphaBlendOp = VK_BLEND_OP_ADD;
 
   VkPipelineColorBlendStateCreateInfo colorBlendState =
-      vks::initializers::pipelineColorBlendStateCreateInfo(1, &blendAttachmentState);
+      lvk::initializers::PipelineColorBlendStateCreateInfo(1, &blendAttachmentState);
 
   VkPipelineDepthStencilStateCreateInfo depthStencilState =
-      vks::initializers::pipelineDepthStencilStateCreateInfo(VK_FALSE, VK_FALSE, VK_COMPARE_OP_ALWAYS);
+      lvk::initializers::PipelineDepthStencilStateCreateInfo(VK_FALSE, VK_FALSE, VK_COMPARE_OP_ALWAYS);
 
-  VkPipelineViewportStateCreateInfo viewportState = vks::initializers::pipelineViewportStateCreateInfo(1, 1, 0);
+  VkPipelineViewportStateCreateInfo viewportState = lvk::initializers::PipelineViewportStateCreateInfo(1, 1, 0);
 
   VkPipelineMultisampleStateCreateInfo multisampleState =
-      vks::initializers::pipelineMultisampleStateCreateInfo(rasterizationSamples);
+      lvk::initializers::PipelineMultisampleStateCreateInfo(rasterizationSamples);
 
   std::vector<VkDynamicState> dynamicStateEnables = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
   VkPipelineDynamicStateCreateInfo dynamicState =
-      vks::initializers::pipelineDynamicStateCreateInfo(dynamicStateEnables);
+      lvk::initializers::PipelineDynamicStateCreateInfo(dynamicStateEnables);
 
-  VkGraphicsPipelineCreateInfo pipelineCreateInfo = vks::initializers::pipelineCreateInfo(pipelineLayout, renderPass);
+  VkGraphicsPipelineCreateInfo pipelineCreateInfo = lvk::initializers::PipelineCreateInfo(pipelineLayout, renderPass);
 
   pipelineCreateInfo.pInputAssemblyState = &inputAssemblyState;
   pipelineCreateInfo.pRasterizationState = &rasterizationState;
@@ -262,17 +262,17 @@ void VulkanUI::PreparePipeline(const VkPipelineCache pipelineCache, const VkRend
 
   // Vertex bindings an attributes based on ImGui vertex definition
   std::vector<VkVertexInputBindingDescription> vertexInputBindings = {
-      vks::initializers::vertexInputBindingDescription(0, sizeof(ImDrawVert), VK_VERTEX_INPUT_RATE_VERTEX),
+      lvk::initializers::VertexInputBindingDescription(0, sizeof(ImDrawVert), VK_VERTEX_INPUT_RATE_VERTEX),
   };
   std::vector<VkVertexInputAttributeDescription> vertexInputAttributes = {
-      vks::initializers::vertexInputAttributeDescription(0, 0, VK_FORMAT_R32G32_SFLOAT,
+      lvk::initializers::VertexInputAttributeDescription(0, 0, VK_FORMAT_R32G32_SFLOAT,
                                                          offsetof(ImDrawVert, pos)),  // Location 0: Position
-      vks::initializers::vertexInputAttributeDescription(0, 1, VK_FORMAT_R32G32_SFLOAT,
+      lvk::initializers::VertexInputAttributeDescription(0, 1, VK_FORMAT_R32G32_SFLOAT,
                                                          offsetof(ImDrawVert, uv)),  // Location 1: UV
-      vks::initializers::vertexInputAttributeDescription(0, 2, VK_FORMAT_R8G8B8A8_UNORM,
+      lvk::initializers::VertexInputAttributeDescription(0, 2, VK_FORMAT_R8G8B8A8_UNORM,
                                                          offsetof(ImDrawVert, col)),  // Location 0: Color
   };
-  VkPipelineVertexInputStateCreateInfo vertexInputState = vks::initializers::pipelineVertexInputStateCreateInfo();
+  VkPipelineVertexInputStateCreateInfo vertexInputState = lvk::initializers::PipelineVertexInputStateCreateInfo();
   vertexInputState.vertexBindingDescriptionCount = static_cast<uint32_t>(vertexInputBindings.size());
   vertexInputState.pVertexBindingDescriptions = vertexInputBindings.data();
   vertexInputState.vertexAttributeDescriptionCount = static_cast<uint32_t>(vertexInputAttributes.size());
@@ -303,31 +303,34 @@ bool VulkanUI::Update() {
   }
 
   // Vertex buffer
-  if ((vertexBuffer.buffer == VK_NULL_HANDLE) || (vertexCount != imDrawData->TotalVtxCount)) {
-    vertexBuffer.unmap();
-    vertexBuffer.destroy();
-    VK_CHECK_RESULT(device->createBuffer(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
-                                         &vertexBuffer, vertexBufferSize));
+  if (vertexBuffer == nullptr || (vertexBuffer->buffer() == VK_NULL_HANDLE) || (vertexCount != imDrawData->TotalVtxCount)) {
+    if (vertexBuffer != nullptr) {
+      vertexBuffer->Unmap();
+      vertexBuffer->Destroy();
+    }
+    vertexBuffer = VulkanBuffer::Create(device, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
+                                        vertexBufferSize);
     vertexCount = imDrawData->TotalVtxCount;
-    vertexBuffer.unmap();
-    vertexBuffer.map();
+    vertexBuffer->Map();
     updateCmdBuffers = true;
   }
 
   // Index buffer
-  if ((indexBuffer.buffer == VK_NULL_HANDLE) || (indexCount < imDrawData->TotalIdxCount)) {
-    indexBuffer.unmap();
-    indexBuffer.destroy();
-    VK_CHECK_RESULT(device->createBuffer(VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
-                                         &indexBuffer, indexBufferSize));
+  if (indexBuffer == nullptr || (indexBuffer->buffer() == VK_NULL_HANDLE) || (indexCount < imDrawData->TotalIdxCount)) {
+    if (indexBuffer != nullptr) {
+      indexBuffer->Unmap();
+      indexBuffer->Destroy();
+    }
+    indexBuffer = VulkanBuffer::Create(device, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
+                                       indexBufferSize);
     indexCount = imDrawData->TotalIdxCount;
-    indexBuffer.map();
+    indexBuffer->Map();
     updateCmdBuffers = true;
   }
 
   // Upload data
-  ImDrawVert* vtxDst = (ImDrawVert*)vertexBuffer.mapped;
-  ImDrawIdx* idxDst = (ImDrawIdx*)indexBuffer.mapped;
+  ImDrawVert* vtxDst = (ImDrawVert*)vertexBuffer->mapped();
+  ImDrawIdx* idxDst = (ImDrawIdx*)indexBuffer->mapped();
 
   for (int n = 0; n < imDrawData->CmdListsCount; n++) {
     const ImDrawList* cmd_list = imDrawData->CmdLists[n];
@@ -338,8 +341,8 @@ bool VulkanUI::Update() {
   }
 
   // Flush to make writes visible to GPU
-  vertexBuffer.flush();
-  indexBuffer.flush();
+  vertexBuffer->Flush();
+  indexBuffer->Flush();
 
   return updateCmdBuffers;
 }
@@ -365,8 +368,8 @@ void VulkanUI::draw(const VkCommandBuffer commandBuffer) {
                      &pushConstBlock);
 
   VkDeviceSize offsets[1] = {0};
-  vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexBuffer.buffer, offsets);
-  vkCmdBindIndexBuffer(commandBuffer, indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT16);
+  vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffer->bufferp(), offsets);
+  vkCmdBindIndexBuffer(commandBuffer, indexBuffer->buffer(), 0, VK_INDEX_TYPE_UINT16);
 
   for (int32_t i = 0; i < imDrawData->CmdListsCount; i++) {
     const ImDrawList* cmd_list = imDrawData->CmdLists[i];
@@ -391,8 +394,8 @@ void VulkanUI::resize(uint32_t width, uint32_t height) {
 }
 
 void VulkanUI::freeResources() {
-  vertexBuffer.destroy();
-  indexBuffer.destroy();
+  vertexBuffer->Destroy();
+  indexBuffer->Destroy();
   vkDestroyImageView(device->device(), fontView, nullptr);
   vkDestroyImage(device->device(), fontImage, nullptr);
   vkFreeMemory(device->device(), fontMemory, nullptr);
@@ -431,8 +434,8 @@ bool VulkanUI::radioButton(const char* caption, bool value) {
   return res;
 }
 
-bool VulkanUI::inputFloat(const char* caption, float* value, float step, uint32_t precision) {
-  bool res = ImGui::InputFloat(caption, value, step, step * 10.0f, precision);
+bool VulkanUI::inputFloat(const char* caption, float* value, float step, const char* format) {
+  bool res = ImGui::InputFloat(caption, value, step, step * 10.0f, format);
   if (res) {
     updated = true;
   };
