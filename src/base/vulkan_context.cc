@@ -20,6 +20,8 @@
 #include "vulkan_pipelinebuilder.h"
 #include "vulkan_tools.h"
 
+#include "imgui.h"
+
 #define VERTEX_BUFFER_BIND_ID 0
 
 namespace lvk {
@@ -774,7 +776,7 @@ void VulkanContext::BuildCommandBuffers(Scene* scene) {
     vkCmdDrawIndexed(drawCmdBuffers_[i], vkNode->vkMesh->indexCount, 1, 0, 0, 0);
 #endif
 
-    // drawUI(drawCmdBuffers[i]);
+    DrawUI(drawCmdBuffers_[i]);
 
     vkCmdEndRenderPass(drawCmdBuffers_[i]);
 
@@ -835,6 +837,8 @@ void VulkanContext::Draw(Scene* scene) {
   VK_CHECK_RESULT(vkQueueSubmit(queue_, 1, &submitInfo_, VK_NULL_HANDLE));
 
   SubmitFrame();
+
+  UpdateOverlay(scene);
 }
 
 void VulkanContext::Prepare() {
@@ -859,6 +863,84 @@ void VulkanContext::Prepare() {
 	  ui.PreparePipeline(pipelineCache_, renderPass_, swapChain_.colorFormat(), options_.depthFormat);
   }
   // ui end
+}
 
+void VulkanContext::UpdateOverlay(Scene* scene) {
+	// if (!settings.overlay)
+	// 	return;
+
+	// The overlay does not need to be updated with each frame, so we limit the update rate
+	// Not only does this save performance but it also makes display of fast changig values like fps more stable
+	// ui.updateTimer -= frameTimer;
+	// if (ui.updateTimer >= 0.0f) {
+	// 	return;
+	// }
+	// Update at max. rate of 30 fps
+	ui.updateTimer = 1.0f / 30.0f;
+
+	ImGuiIO& io = ImGui::GetIO();
+
+	io.DisplaySize = ImVec2((float)width, (float)height);
+	io.DeltaTime = 1.0f / 30.0f; //frameTimer;
+
+	// io.MousePos = ImVec2(mouseState.position.x, mouseState.position.y);
+	// io.MouseDown[0] = mouseState.buttons.left && ui.visible;
+	// io.MouseDown[1] = mouseState.buttons.right && ui.visible;
+	// io.MouseDown[2] = mouseState.buttons.middle && ui.visible;
+
+	ImGui::NewFrame();
+
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0);
+	ImGui::SetNextWindowPos(ImVec2(10 * ui.scale, 10 * ui.scale));
+	ImGui::SetNextWindowSize(ImVec2(0, 0), ImGuiCond_FirstUseEver);
+	ImGui::Begin("Vulkan Example", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
+	ImGui::TextUnformatted("Title Here!");
+	ImGui::TextUnformatted("deviceProperties.deviceName");
+	ImGui::Text("%.2f ms/frame (%.1d fps)", (1000.0f / 60), 60);
+
+#if defined(VK_USE_PLATFORM_ANDROID_KHR)
+	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 5.0f * ui.scale));
+#endif
+	ImGui::PushItemWidth(110.0f * ui.scale);
+	// OnUpdateUIOverlay(&ui);
+
+  if (ui.header("Settings")) {
+    int index = 0;
+    std::vector items = { std::string("aaa"), std::string("bbb") };
+    if (ui.comboBox("Material", &index, items)) {
+    }
+  }
+
+	ImGui::PopItemWidth();
+#if defined(VK_USE_PLATFORM_ANDROID_KHR)
+	ImGui::PopStyleVar();
+#endif
+
+	ImGui::End();
+	ImGui::PopStyleVar();
+	ImGui::Render();
+
+	if (ui.Update() || ui.updated) {
+		BuildCommandBuffers(scene);
+		ui.updated = false;
+	}
+
+#if defined(VK_USE_PLATFORM_ANDROID_KHR)
+	if (mouseState.buttons.left) {
+		mouseState.buttons.left = false;
+	}
+#endif
+}
+
+void VulkanContext::DrawUI(const VkCommandBuffer commandBuffer)
+{
+	// if (settings.overlay && ui.visible) {
+		const VkViewport viewport = lvk::initializers::Viewport((float)width, (float)height, 0.0f, 1.0f);
+		const VkRect2D scissor = lvk::initializers::Rect2D(width, height, 0, 0);
+		vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+		vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+
+		ui.draw(commandBuffer);
+	// }
 }
 }  // namespace lvk

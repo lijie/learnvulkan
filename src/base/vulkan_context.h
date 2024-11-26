@@ -242,5 +242,7 @@ class VulkanContext {
   int FindOrCreatePipeline(const Node& node, const VulkanNode& vkNode);
   void FindOrCreateDescriptorSet(VulkanNode *vkNode);
   // void BuildPipelines();
+  void UpdateOverlay(Scene* scene);
+  void DrawUI(const VkCommandBuffer commandBuffer);
 };
 }  // namespace lvk

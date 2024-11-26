@@ -22,4 +22,9 @@ void main()
 	outUV = inUV;
 	outColor = inColor;
 	gl_Position = vec4(inPos * pushConstants.scale + pushConstants.translate, 0.0, 1.0);
+
+	// 从 vulkan sample 抄过来的例子
+	// 但是渲染出来的字体翻转了, 这里处理一下...
+	// 也不知道为什么...
+	gl_Position.y = -gl_Position.y;
 }

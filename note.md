@@ -68,7 +68,7 @@
   - 比如 gl_Position = -gl_Position
   - 比如 vulkan sample 加载模型时直接翻转了模型顶点的 y 和法线的 y
   - 还有例子是翻转project投影矩阵
-  - vulkan api 1.1 之后可以设置 viewport.height 为负数来实现翻转
+  - vulkan api 1.1 之后可以设置 viewport.height 为负数来实现翻转 (我是用的这个方案)
 [参考这里](https://www.saschawillems.de/blog/2019/03/29/flipping-the-vulkan-viewport/)
 
 ### 强制 glm 使用右手坐标系
