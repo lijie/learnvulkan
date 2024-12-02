@@ -107,7 +107,6 @@ class VulkanApp {
   InputSystem input_system_;
 
   Scene scene;
-  VulkanUI ui;
   VulkanUIRenderWrapper *ui_render_wrapper_{nullptr};
   DefaultCameraMoveInput *camera_move_input_{nullptr};
 
@@ -136,6 +135,9 @@ class VulkanApp {
   virtual void InitScene() {}
   void UpdateOverlay(Scene* scene);
 
+  private:
+    VulkanUI ui_;
+
  public:
   static std::vector<const char *> args;
   
@@ -146,6 +148,8 @@ class VulkanApp {
   void HandleMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
   HWND SetupWindow(HINSTANCE hinstance, WNDPROC wndproc);
   virtual void Update(float delta_time);
+
+  virtual void SetupUI(VulkanUI *ui) {};
 
   virtual ~VulkanApp() {}
 };

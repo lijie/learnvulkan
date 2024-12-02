@@ -178,7 +178,7 @@ bool VulkanApp::InitVulkan() {
   camera_move_input_ = new DefaultCameraMoveInput(scene.GetCamera());
   input_system_.AddInputComponent(camera_move_input_);
 
-  ui_render_wrapper_ = new VulkanUIRenderWrapper(&ui, width, height);
+  ui_render_wrapper_ = new VulkanUIRenderWrapper(&ui_, width, height);
   context_->AddRenderComponent(ui_render_wrapper_);
 
   return true;
@@ -263,7 +263,7 @@ void VulkanApp::UpdateOverlay(Scene* scene) {
 	// 	return;
 	// }
 	// Update at max. rate of 30 fps
-	ui.updateTimer = 1.0f / 30.0f;
+	ui_.updateTimer = 1.0f / 30.0f;
 
 	ImGuiIO& io = ImGui::GetIO();
 
@@ -278,7 +278,7 @@ void VulkanApp::UpdateOverlay(Scene* scene) {
 	ImGui::NewFrame();
 
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0);
-	ImGui::SetNextWindowPos(ImVec2(10 * ui.scale, 10 * ui.scale));
+	ImGui::SetNextWindowPos(ImVec2(10 * ui_.scale, 10 * ui_.scale));
 	ImGui::SetNextWindowSize(ImVec2(0, 0), ImGuiCond_FirstUseEver);
 	ImGui::Begin("Vulkan Example", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
 	ImGui::TextUnformatted("Title Here!");
@@ -288,15 +288,9 @@ void VulkanApp::UpdateOverlay(Scene* scene) {
 #if defined(VK_USE_PLATFORM_ANDROID_KHR)
 	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 5.0f * ui.scale));
 #endif
-	ImGui::PushItemWidth(110.0f * ui.scale);
-	// OnUpdateUIOverlay(&ui);
-
-  if (ui.header("Settings")) {
-    int index = 0;
-    std::vector items = { std::string("aaa"), std::string("bbb") };
-    if (ui.comboBox("Material", &index, items)) {
-    }
-  }
+	ImGui::PushItemWidth(110.0f * ui_.scale);
+	
+  SetupUI(&ui_);
 
 	ImGui::PopItemWidth();
 #if defined(VK_USE_PLATFORM_ANDROID_KHR)
@@ -307,9 +301,9 @@ void VulkanApp::UpdateOverlay(Scene* scene) {
 	ImGui::PopStyleVar();
 	ImGui::Render();
 
-	if (ui.Update() || ui.updated) {
+	if (ui_.Update() || ui_.updated) {
 		context_->BuildCommandBuffers(scene);
-		ui.updated = false;
+		ui_.updated = false;
 	}
 
 #if defined(VK_USE_PLATFORM_ANDROID_KHR)

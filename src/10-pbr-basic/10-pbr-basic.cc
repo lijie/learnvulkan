@@ -1,3 +1,4 @@
+#include "base/vulkan_ui.h"
 #define NOMINMAX
 
 #include "base/directional_light.h"
@@ -16,6 +17,7 @@ using lvk::VulkanApp;
 class PbrBasicApp : public VulkanApp {
  private:
   virtual void InitScene() override;
+  virtual void SetupUI(VulkanUI* ui) override;
 };
 
 void PbrBasicApp::InitScene() {
@@ -51,6 +53,15 @@ void PbrBasicApp::InitScene() {
   auto light = NewNode<DirectionalLight>(
       Transform{.translation{0.0, 0.0, -6.0}, .rotation{0, 0, 0}, .scale{1.0, 1.0, 1.0}}, vec3f{1.0, 1.0, 1.0});
   scene.AddNode(light);
+}
+
+void PbrBasicApp::SetupUI(VulkanUI *ui) {
+  if (ui->header("Settings")) {
+    int index = 0;
+    std::vector items = {std::string("aaa"), std::string("bbb")};
+    if (ui->comboBox("Material", &index, items)) {
+    }
+  }
 }
 }  // namespace lvk
 
