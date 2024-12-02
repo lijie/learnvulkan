@@ -1,10 +1,10 @@
 #include "vulkan_app.h"
 
-#include <array>
 #include <iostream>
 #include <ratio>
 #include <vector>
 
+#include "imgui.h"
 #include "input.h"
 #include "lvk_math.h"
 #include "vulkan_context.h"
@@ -12,6 +12,7 @@
 #include "vulkan_device.h"
 #include "vulkan_initializers.h"
 #include "vulkan_tools.h"
+#include "vulkan_ui.h"
 #include "window.h"
 
 #include "lvk_log.h"
@@ -44,6 +45,11 @@ void DefaultCameraMoveInput::Update(float delta_time) {
   camera_->SetRotation(camera_->GetRotation() + rotation_vec_);
   rotation_vec_ = ZERO_VECTOR;
 }
+
+class AppInteractionInput : public InputComponent {
+  virtual void OnMouseClick(int button, int action) override;
+  virtual void OnMouseMove(double x, double y) override;
+};
 
 bool VulkanApp::InitVulkan() {
   VkResult err;
@@ -164,11 +170,17 @@ bool VulkanApp::InitVulkan() {
 
   WindowEventCallback callbacks{
       .OnKey = [this](int key, int action) { input_system_.OnKey(key, action); },
+      .OnMouseMove = [this](double x, double y) { input_system_.OnMouseMove(x, y); },
+      .OnMouseClick = [this](int button, int action, int mod) { input_system_.OnMouseClick(button, action); },
   };
 
   window_->SetEventCallbacks(callbacks);
   camera_move_input_ = new DefaultCameraMoveInput(scene.GetCamera());
   input_system_.AddInputComponent(camera_move_input_);
+
+  ui_render_wrapper_ = new VulkanUIRenderWrapper(&ui, width, height);
+  context_->AddRenderComponent(ui_render_wrapper_);
+
   return true;
 }
 
@@ -176,7 +188,6 @@ void VulkanApp::NextFrame(double deltaTime) {
   // auto tStart = std::chrono::high_resolution_clock::now();
   Render(deltaTime);
   frameCounter++;
-  UpdateUI();
 }
 
 void VulkanApp::RenderLoop() {
@@ -231,6 +242,7 @@ void VulkanApp::Render(double deltaTime) {
   if (!prepared) return;
   Update(deltaTime);
   context_->Draw(&scene);
+  UpdateOverlay(&scene);
 }
 
 void VulkanApp::Update(float delta_time) {
@@ -240,8 +252,71 @@ void VulkanApp::Update(float delta_time) {
   }
 }
 
-void VulkanApp::UpdateUI() {
-  
+void VulkanApp::UpdateOverlay(Scene* scene) {
+	// if (!settings.overlay)
+	// 	return;
+
+	// The overlay does not need to be updated with each frame, so we limit the update rate
+	// Not only does this save performance but it also makes display of fast changig values like fps more stable
+	// ui.updateTimer -= frameTimer;
+	// if (ui.updateTimer >= 0.0f) {
+	// 	return;
+	// }
+	// Update at max. rate of 30 fps
+	ui.updateTimer = 1.0f / 30.0f;
+
+	ImGuiIO& io = ImGui::GetIO();
+
+	io.DisplaySize = ImVec2((float)width, (float)height);
+	io.DeltaTime = 1.0f / 30.0f; //frameTimer;
+
+	io.MousePos = ImVec2(input_system_.GetMousePosition().x, input_system_.GetMousePosition().y);
+	io.MouseDown[0] = input_system_.GetMouseState(0);
+	io.MouseDown[1] = input_system_.GetMouseState(1);
+	io.MouseDown[2] = input_system_.GetMouseState(2);
+
+	ImGui::NewFrame();
+
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0);
+	ImGui::SetNextWindowPos(ImVec2(10 * ui.scale, 10 * ui.scale));
+	ImGui::SetNextWindowSize(ImVec2(0, 0), ImGuiCond_FirstUseEver);
+	ImGui::Begin("Vulkan Example", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
+	ImGui::TextUnformatted("Title Here!");
+	ImGui::TextUnformatted("deviceProperties.deviceName");
+	ImGui::Text("%.2f ms/frame (%.1d fps)", (1000.0f / 60), 60);
+
+#if defined(VK_USE_PLATFORM_ANDROID_KHR)
+	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 5.0f * ui.scale));
+#endif
+	ImGui::PushItemWidth(110.0f * ui.scale);
+	// OnUpdateUIOverlay(&ui);
+
+  if (ui.header("Settings")) {
+    int index = 0;
+    std::vector items = { std::string("aaa"), std::string("bbb") };
+    if (ui.comboBox("Material", &index, items)) {
+    }
+  }
+
+	ImGui::PopItemWidth();
+#if defined(VK_USE_PLATFORM_ANDROID_KHR)
+	ImGui::PopStyleVar();
+#endif
+
+	ImGui::End();
+	ImGui::PopStyleVar();
+	ImGui::Render();
+
+	if (ui.Update() || ui.updated) {
+		context_->BuildCommandBuffers(scene);
+		ui.updated = false;
+	}
+
+#if defined(VK_USE_PLATFORM_ANDROID_KHR)
+	if (mouseState.buttons.left) {
+		mouseState.buttons.left = false;
+	}
+#endif
 }
 
 }  // namespace lvk

@@ -59,4 +59,14 @@ void InputSystem::OnKey(int key, int action) {
   }
 }
 
+void InputSystem::OnMouseClick(int button, int action) {
+  DEBUG_LOG("click, button:{}, action:{}", button, action);
+  mouse_state_[button] = action;
+}
+
+void InputSystem::OnMouseMove(double x, double y) {
+  // DEBUG_LOG("move:[{}, {}]", x, y);
+  mouse_position_.x = x;
+  mouse_position_.y = y;
+}
 }  // namespace lvk

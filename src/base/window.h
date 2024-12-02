@@ -10,6 +10,8 @@ enum class WindowType {
 
 struct WindowEventCallback {
   std::function<void(int key, int action)> OnKey;
+  std::function<void(double xpos, double ypos)> OnMouseMove;
+  std::function<void(int button, int action , int mod)> OnMouseClick;
 };
 
 class Window {

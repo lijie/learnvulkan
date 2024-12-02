@@ -107,6 +107,8 @@ class VulkanApp {
   InputSystem input_system_;
 
   Scene scene;
+  VulkanUI ui;
+  VulkanUIRenderWrapper *ui_render_wrapper_{nullptr};
   DefaultCameraMoveInput *camera_move_input_{nullptr};
 
   void InitSwapchain();
@@ -129,11 +131,10 @@ class VulkanApp {
   virtual void GetEnabledExtensions() {}
 
   std::string GetShadersPath() const;
-  VkPipelineShaderStageCreateInfo LoadShader(std::string fileName, VkShaderStageFlagBits stage);
 
  protected:
   virtual void InitScene() {}
-  virtual void UpdateUI();
+  void UpdateOverlay(Scene* scene);
 
  public:
   static std::vector<const char *> args;

@@ -23,9 +23,9 @@ VulkanUI::VulkanUI() {
   ImGui::CreateContext();
   // Color scheme
   ImGuiStyle& style = ImGui::GetStyle();
-  style.Colors[ImGuiCol_TitleBg] = ImVec4(1.0f, 0.0f, 0.0f, 1.0f);
-  style.Colors[ImGuiCol_TitleBgActive] = ImVec4(1.0f, 0.0f, 0.0f, 1.0f);
-  style.Colors[ImGuiCol_TitleBgCollapsed] = ImVec4(1.0f, 0.0f, 0.0f, 0.1f);
+  style.Colors[ImGuiCol_TitleBg] = ImVec4(0.22f, 0.46f, 0.78f, 1.0f);
+  style.Colors[ImGuiCol_TitleBgActive] = ImVec4(0.22f, 0.46f, 0.78f, 1.0f);
+  style.Colors[ImGuiCol_TitleBgCollapsed] = ImVec4(0.22f, 0.46f, 0.78f, 0.1f);
   style.Colors[ImGuiCol_MenuBarBg] = ImVec4(1.0f, 0.0f, 0.0f, 0.4f);
   style.Colors[ImGuiCol_Header] = ImVec4(0.8f, 0.0f, 0.0f, 0.4f);
   style.Colors[ImGuiCol_HeaderActive] = ImVec4(1.0f, 0.0f, 0.0f, 0.4f);
@@ -303,7 +303,8 @@ bool VulkanUI::Update() {
   }
 
   // Vertex buffer
-  if (vertexBuffer == nullptr || (vertexBuffer->buffer() == VK_NULL_HANDLE) || (vertexCount != imDrawData->TotalVtxCount)) {
+  if (vertexBuffer == nullptr || (vertexBuffer->buffer() == VK_NULL_HANDLE) ||
+      (vertexCount != imDrawData->TotalVtxCount)) {
     if (vertexBuffer != nullptr) {
       vertexBuffer->Unmap();
       vertexBuffer->Destroy();
@@ -497,4 +498,29 @@ void VulkanUI::text(const char* formatstr, ...) {
   ImGui::TextV(formatstr, args);
   va_end(args);
 }
+
+void VulkanUIRenderWrapper::Prepare(VulkanDevice* device, VulkanContext* context) {
+  // ui
+  if (1) {
+    ui_->device = device;
+    ui_->queue = context->GetQueue();
+    ui_->shaders = {
+        context->LoadVertexShader("uioverlay.vert.spv"),
+        context->LoadFragmentShader("uioverlay.frag.spv"),
+    };
+    ui_->PrepareResources();
+    ui_->PreparePipeline(context->GetPipelineCache(), context->GetRenderPass(), context->GetColorFormat(),
+                         context->GetDepthFormat());
+  }
+  // ui end
+}
+
+void VulkanUIRenderWrapper::BuildCommandBuffers(Scene* scene, VkCommandBuffer command_buffer) {
+  const VkViewport viewport = lvk::initializers::Viewport(width_, height_, 0.0f, 1.0f);
+  const VkRect2D scissor = lvk::initializers::Rect2D(width_, height_, 0, 0);
+  vkCmdSetViewport(command_buffer, 0, 1, &viewport);
+  vkCmdSetScissor(command_buffer, 0, 1, &scissor);
+  ui_->draw(command_buffer);
+}
+
 }  // namespace lvk

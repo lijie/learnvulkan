@@ -3,6 +3,7 @@
 #include "vulkan/vulkan.h"
 #include <vector>
 #include "lvk_math.h"
+#include "vulkan_context.h"
 
 namespace lvk {
 
@@ -70,4 +71,18 @@ class VulkanUI {
   bool colorPicker(const char* caption, float* color);
   void text(const char* formatstr, ...);
 };
+
+class VulkanUIRenderWrapper : public RenderComponent {
+  public:
+    VulkanUIRenderWrapper(VulkanUI *ui, float w, float h): ui_(ui), width_(w), height_(h) {};
+
+    virtual void Prepare(VulkanDevice *device, VulkanContext *context) override;
+    virtual void BuildCommandBuffers(Scene *scene, VkCommandBuffer command_buffer) override;
+
+  protected:
+    VulkanUI *ui_{nullptr};
+    float width_{0.0};
+    float height_{0.0};
+};
+
 }  // namespace lkv

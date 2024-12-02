@@ -13,13 +13,20 @@
 #include "vulkan_device.h"
 #include "vulkan_swapchain.h"
 #include "vulkan_texture.h"
-#include "vulkan_ui.h"
 
 namespace lvk {
 class VulkanDevice;
 class Scene;
 class Material;
 class Window;
+class VulkanContext;
+
+// 用于在渲染流程中插入自定义渲染逻辑
+class RenderComponent {
+  public:
+    virtual void Prepare(VulkanDevice *device, VulkanContext *context) {};
+    virtual void BuildCommandBuffers(Scene *scene, VkCommandBuffer command_buffer) {};
+};
 
 struct VulkanContextOptions {
   Window *window{nullptr};
@@ -105,6 +112,10 @@ class VulkanContext {
 
   void Prepare();
 
+  // utils
+  VkPipelineShaderStageCreateInfo LoadVertexShader(const std::string& path);
+  VkPipelineShaderStageCreateInfo LoadFragmentShader(const std::string& path);
+
   const VkPipelineVertexInputStateCreateInfo &BuildVertexInputState();
 
   VkInstance instance() const { return instance_; }
@@ -125,8 +136,14 @@ class VulkanContext {
 
   const VulkanNode *GetVkNode(int handle) { return &vkNodeList[handle]; }
   VkPipeline GetPipeline(int handle) { return pipelineList[handle]; }
+  VkQueue GetQueue() { return queue_; }
+  VkPipelineCache GetPipelineCache() { return pipelineCache_; }
+  VkRenderPass GetRenderPass() { return renderPass_; }
+  VkFormat GetColorFormat() { return swapChain_.colorFormat(); }
+  VkFormat GetDepthFormat() { return options_.depthFormat; }
 
   void set_vulkan_device(VulkanDevice *device) { device_ = device; };
+  void AddRenderComponent(RenderComponent *rc) { rc_array_.push_back(rc); }
 
   uint32_t width{1280};
   uint32_t height{720};
@@ -234,7 +251,7 @@ class VulkanContext {
   // std::map<DescriptorSetKey, VkDescriptorSet> descriptorSetCache_;
   std::unordered_map<DescriptorSetKey, VkDescriptorSet, DescriptorSetKey::HashFunction> descriptorSetCache_;
 
-  VulkanUI ui;
+  std::vector<RenderComponent*> rc_array_;
 
   VkResult CreateInstance(bool enableValidation);
   VkPipelineShaderStageCreateInfo LoadShader(std::string fileName, VkShaderStageFlagBits stage, VulkanDevice *device);
@@ -243,6 +260,8 @@ class VulkanContext {
   void FindOrCreateDescriptorSet(VulkanNode *vkNode);
   // void BuildPipelines();
   void UpdateOverlay(Scene* scene);
-  void DrawUI(const VkCommandBuffer commandBuffer);
+
+  void RenderComponentPrepare();
+  void RenderComponentBuildCommandBuffers(Scene* scene, VkCommandBuffer command_buffer);
 };
 }  // namespace lvk

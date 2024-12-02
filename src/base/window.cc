@@ -33,10 +33,18 @@ void key_callback(GLFWwindow *window, int key, int /*scancode*/, int action, int
 
 void cursor_position_callback(GLFWwindow *window, double xpos, double ypos) {
   // DEBUG_LOG("mouse position: {}, {}", xpos, ypos);
+  auto w = (GlfwWindow *)glfwGetWindowUserPointer(window);
+  if (w && w->event_callbacks_.OnMouseMove) {
+    w->event_callbacks_.OnMouseMove(xpos, ypos);
+  }
 }
 
-void mouse_button_callback(GLFWwindow *window, int button, int action, int /*mods*/) {
+void mouse_button_callback(GLFWwindow *window, int button, int action, int mods) {
   // DEBUG_LOG("mouse button: {}, action: {}", button, action);
+  auto w = (GlfwWindow *)glfwGetWindowUserPointer(window);
+  if (w && w->event_callbacks_.OnMouseClick) {
+    w->event_callbacks_.OnMouseClick(button, action, mods);
+  }
 }
 
 GlfwWindow::GlfwWindow(int width, int height) {

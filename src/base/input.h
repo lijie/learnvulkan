@@ -1,6 +1,8 @@
 #pragma once
 
 #include <vector>
+#include <array>
+#include "lvk_math.h"
 
 namespace lvk {
 
@@ -54,10 +56,20 @@ class InputSystem {
   void OnMouseClick(int button, int action);
   void OnMouseMove(double x, double y);
 
+  int GetMouseState(int button) {
+    return mouse_state_[button];
+  };
+
+  vec2f GetMousePosition() {
+    return mouse_position_;
+  }
+
   void Update(float delta_time);
 
  private:
   std::vector<InputComponent *> ic_array_;
+  std::array<int, 3> mouse_state_ = {0, 0, 0};
+  vec2f mouse_position_;
 };
 
 }  // namespace lvk
