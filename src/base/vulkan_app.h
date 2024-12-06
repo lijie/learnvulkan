@@ -1,7 +1,6 @@
 #pragma once
 
 #include <chrono>
-#include <cstddef>
 #include <string>
 #include <vector>
 
@@ -26,17 +25,31 @@ class Camera;
 
 class DefaultCameraMoveInput : public InputComponent {
  public:
-  DefaultCameraMoveInput(Camera *camera) : camera_(camera), input_vec_(ZERO_VECTOR), rotation_vec_(ZERO_VECTOR) {}
+  DefaultCameraMoveInput(Camera *camera) : camera_(camera), input_vec_(ZERO_VECTOR), rotation_vec_(ZERO_VECTOR) {
+    mouse_move_delta_ = vec2f(0, 0);
+  }
   virtual void OnDirectionInput(const DirectionInput &di) override;
   virtual void OnRotationInput(const DirectionInput &ri) override;
+  virtual void OnMouseClick(MouseButton button, MouseState action) override;
+  virtual void OnMouseMove(double x, double y) override;
+  virtual void OnKey(KeyCode key, KeyState action) override;
   void Update(float delta_time);
 
  private:
   Camera *camera_;
   vec3f input_vec_;
   vec3f rotation_vec_;
-  float move_speed_ = 0.10;
+  float move_speed_ = 10;
   float rotation_speed_ = 5.0;
+
+  // mouse
+  bool mouse_left_down_ = false;
+  bool init_position_ = false;
+  vec2f last_mouse_position_;
+  vec2f mouse_move_delta_;
+
+  // key
+  KeyState key_state_[4];
 };
 
 class VulkanApp {

@@ -1,13 +1,14 @@
-#include "base/vulkan_ui.h"
 #define NOMINMAX
+#include "base/vulkan_app.h"
 
 #include "base/directional_light.h"
 #include "base/mesh_loader.h"
 #include "base/node.h"
 #include "base/scene.h"
-#include "base/vulkan_app.h"
 #include "base/vulkan_context.h"
 #include "base/vulkan_tools.h"
+#include "base/lvk_log.h"
+#include "base/vulkan_ui.h"
 
 lvk::PrimitiveMesh test_lvk_mesh;
 
@@ -16,11 +17,35 @@ using lvk::VulkanApp;
 
 class PbrBasicApp : public VulkanApp {
  private:
+  void TestNode();
   virtual void InitScene() override;
   virtual void SetupUI(VulkanUI* ui) override;
 };
 
+void PbrBasicApp::TestNode() {
+  auto n = NewNode<Node>(Transform{.translation{0.0, 0.0, 0}, .rotation{0, 0, 0}, .scale{1.0, 1.0, 1.0}});
+  DEBUG_LOG("TestNode,InitMatrix,Matrix:\n{}", n->GetLocalMatrixString());
+
+  n->SetRotation(vec3f(30.0f, 0.0f, 0.0f));
+  DEBUG_LOG("TestNode,RotationX30,Matrix:\n{}", n->GetLocalMatrixString());
+
+  n->SetRotation(vec3f(0.0f, 30.0f, 0.0f));
+  DEBUG_LOG("TestNode,RotationY30,Matrix:\n{}", n->GetLocalMatrixString());
+
+  n->SetRotation(vec3f(0.0f, 0.0f, 30.0f));
+  DEBUG_LOG("TestNode,RotationZ30,Matrix:\n{}", n->GetLocalMatrixString());
+
+  n->SetLocation(vec3f(2.0f, 2.0f, 2.0f));
+  DEBUG_LOG("TestNode,AddTranslation,Matrix:\n{}", n->GetLocalMatrixString());
+
+  n->SetRotation(vec3f(30.0f, 30.0f, 30.0f));
+  DEBUG_LOG("TestNode,RotationXYZ30,Matrix:\n{}", n->GetLocalMatrixString());
+}
+
 void PbrBasicApp::InitScene() {
+
+  TestNode();
+
   // auto cube_mesh = MeshLoader::LoadMesh("..\\assets\\models\\teapot.gltf");
   auto cube_mesh = MeshLoader::LoadMesh(tools::GetModelPath() + "teapot.gltf");
   // prepare resource

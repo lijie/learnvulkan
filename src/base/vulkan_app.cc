@@ -21,7 +21,7 @@ namespace lvk {
 std::vector<const char *> VulkanApp::args;
 
 void DefaultCameraMoveInput::OnDirectionInput(const DirectionInput &di) {
-  DEBUG_LOG("direction input: {}, {}", (int)di.direction, di.scale);
+  // DEBUG_LOG("direction input: {}, {}", (int)di.direction, di.scale);
   if (di.direction == kInputDirection::Forward) {
     input_vec_ += camera_->GetForwardVector() * move_speed_ * di.scale;
   } else if (di.direction == kInputDirection::Right) {
@@ -30,7 +30,7 @@ void DefaultCameraMoveInput::OnDirectionInput(const DirectionInput &di) {
 }
 
 void DefaultCameraMoveInput::OnRotationInput(const DirectionInput &ri) {
-  DEBUG_LOG("rotation input: {}, {}", (int)ri.direction, ri.scale);
+  // DEBUG_LOG("rotation input: {}, {}", (int)ri.direction, ri.scale);
   if (ri.direction == kInputDirection::Forward) {
     rotation_vec_ += vector::RIGHT * rotation_speed_ * ri.scale;
   } else if (ri.direction == kInputDirection::Right) {
@@ -38,18 +38,93 @@ void DefaultCameraMoveInput::OnRotationInput(const DirectionInput &ri) {
   }
 }
 
+void DefaultCameraMoveInput::OnMouseClick(MouseButton button, MouseState action) {
+  if (button == MouseButton::Left) {
+    mouse_left_down_ = (action == MouseState::Down);
+  }
+
+  if (mouse_left_down_) {
+    init_position_ = false;
+  }
+}
+
+void DefaultCameraMoveInput::OnMouseMove(double x, double y) {
+  vec2f current_pos(x, y);
+  if (mouse_left_down_) {
+    if (!init_position_) {
+      last_mouse_position_ = current_pos;
+      init_position_ = true;
+      return;
+    }
+
+    DEBUG_LOG("last_mouse_position: {}", glm::to_string(last_mouse_position_));
+    DEBUG_LOG("current_pos: {}", glm::to_string(current_pos));
+
+    mouse_move_delta_ += current_pos - last_mouse_position_;
+    last_mouse_position_ = current_pos;
+
+    DEBUG_LOG("mouse_move_delta_: {}", glm::to_string(mouse_move_delta_));
+  }
+}
+
+void DefaultCameraMoveInput::OnKey(KeyCode key, KeyState action) {
+  switch (key) {
+    case KeyCode::W:
+      key_state_[0] = action;
+      break;
+    case KeyCode::S:
+      key_state_[1] = action;
+      break;
+    case KeyCode::A:
+      key_state_[2] = action;
+      break;
+    case KeyCode::D:
+      key_state_[3] = action;
+      break;
+    default:
+      break;
+  }
+}
+
 void DefaultCameraMoveInput::Update(float delta_time) {
+#if 0
   camera_->SetLocation(camera_->GetLocation() + input_vec_);
   // DEBUG_LOG("Camera Location: {}", glm::to_string(camera_->GetLocation()));
   input_vec_ = ZERO_VECTOR;
   camera_->SetRotation(camera_->GetRotation() + rotation_vec_);
   rotation_vec_ = ZERO_VECTOR;
-}
+#endif
 
-class AppInteractionInput : public InputComponent {
-  virtual void OnMouseClick(int button, int action) override;
-  virtual void OnMouseMove(double x, double y) override;
-};
+#define ISDOWN(k) ((k) == KeyState::Down || (k) == KeyState::Hold)
+
+  vec3f move_vec = ZERO_VECTOR;
+  if (ISDOWN(key_state_[0])) {
+    move_vec += camera_->GetForwardVector() * move_speed_ * delta_time;
+  }
+  if (ISDOWN(key_state_[1])) {
+    move_vec += camera_->GetForwardVector() * move_speed_ * delta_time * (-1.0f);
+  }
+  if (ISDOWN(key_state_[2])) {
+    move_vec += camera_->GetRightVector() * move_speed_ * delta_time * (-1.0f);
+  }
+  if (ISDOWN(key_state_[3])) {
+    move_vec += camera_->GetRightVector() * move_speed_ * delta_time;
+  }
+  camera_->SetLocation(camera_->GetLocation() + move_vec);
+
+  if (glm::epsilonNotEqual(mouse_move_delta_.x, 0.0f, 0.00001f)) {
+    auto rotation = camera_->GetRotation();
+    rotation.y += mouse_move_delta_.x * 0.125;
+    mouse_move_delta_.x = 0;
+    camera_->SetRotation(rotation);
+  }
+  if (glm::epsilonNotEqual(mouse_move_delta_.y, 0.0f, 0.00001f)) {
+    auto rotation = camera_->GetRotation();
+    rotation.x += mouse_move_delta_.y * 0.125;
+    mouse_move_delta_.y = 0;
+    camera_->SetRotation(rotation);
+  }
+}
 
 bool VulkanApp::InitVulkan() {
   VkResult err;

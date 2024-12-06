@@ -1,7 +1,5 @@
 #pragma once
 
-#include <memory>
-
 #include "lvk_math.h"
 #include "node.h"
 #include "transform.h"

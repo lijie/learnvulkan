@@ -11,7 +11,7 @@ enum class kInputDirection {
   Right,
 };
 
-enum class kInputKeyCode {
+enum class KeyCode {
   W = 87,
   S = 83,
   A = 65,
@@ -21,6 +21,23 @@ enum class kInputKeyCode {
   DOWN = 264,
   LEFT = 263,
   RIGHT = 262,
+};
+
+enum class KeyState {
+  Up,
+  Down,
+  Hold,
+};
+
+enum class MouseButton {
+  Left = 0,
+  Right = 1,
+  Middle = 2,
+};
+
+enum class MouseState {
+  Up,
+  Down,
 };
 
 struct DirectionInput {
@@ -41,8 +58,8 @@ class InputComponent {
   virtual void OnRotationInput(const DirectionInput &ri){};
 
   // general
-  virtual void OnKey(int key, int action){};
-  virtual void OnMouseClick(int button, int action){};
+  virtual void OnKey(KeyCode key, KeyState action){};
+  virtual void OnMouseClick(MouseButton button, MouseState action){};
   virtual void OnMouseMove(double x, double y){};
 };
 

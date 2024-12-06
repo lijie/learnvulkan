@@ -33,30 +33,15 @@ struct Node {
   NodeType node_type{NodeType::Object};
   NodeFlags flags;
 
-  Node() {}
+  Node();
   Node(const Transform& in_transform, NodeType in_node_type) {
     transform = in_transform;
     node_type = in_node_type;
+    localMatrix();
   }
   Node(const Transform& in_transform) : Node(in_transform, NodeType::Object) {}
 
-  mat4f localMatrix() {
-#if 0
-    mat4f m{1.0};
-    m = glm::scale(m, transform.scale);
-    m = glm::rotate(m, transform.rotation.y, vec3f(0, 1, 0));
-    m = glm::rotate(m, transform.rotation.x, vec3f(1, 0, 0));
-    m = glm::rotate(m, transform.rotation.z, vec3f(0, 0, 1));
-    m = glm::translate(m, transform.translation);
-    // cache result
-    matrix = m;
-#endif
-    matrix = glm::translate(mat4f{1.0}, transform.translation);
-    matrix = glm::rotate(matrix, glm::radians(transform.rotation.x), vec3f(1, 0, 0));
-    matrix = glm::rotate(matrix, glm::radians(transform.rotation.y), vec3f(0, 1, 0));
-    matrix = glm::rotate(matrix, glm::radians(transform.rotation.z), vec3f(0, 0, 1));
-    return matrix;
-  }
+  mat4f localMatrix();
 
   vec3f Rotation() const { return transform.rotation; }
 
@@ -74,26 +59,29 @@ struct Node {
     ClampRotation(transform.rotation.y);
     ClampRotation(transform.rotation.x);
     ClampRotation(transform.rotation.z);
+    localMatrix();
   }
 
-  void SetLocation(const vec3f& in) { transform.translation = in; }
+  void SetLocation(const vec3f& in) {
+    transform.translation = in;
+    localMatrix();
+  }
 
   void SetLocationAndRotation(const vec3f& location, const vec3f rotation) {
     transform.translation = location;
     SetRotation(rotation);
+    localMatrix();
   }
 
   vec3f GetLocation() { return transform.translation; }
   vec3f GetRotation() { return transform.rotation; }
 
-  vec3f GetForwardVector() {
-    localMatrix();
-    return glm::normalize(vec3f(matrix[2][0], matrix[2][1], matrix[2][2]));
-  }
+  vec3f GetForwardVector() { return glm::normalize(vec3f(matrix[2][0], matrix[2][1], matrix[2][2])); }
   vec3f GetRightVector() {
-    localMatrix();
-    return glm::normalize(vec3f(matrix[0][0], matrix[0][1], matrix[0][2]));
+    // TODO(andrewli): (-1) 是因为 flipY 了?
+    return glm::normalize(vec3f(matrix[0][0], matrix[0][1], matrix[0][2])) * -1.0f;
   }
+  std::string GetLocalMatrixString();
 };
 
 typedef std::shared_ptr<Node> SNode;
