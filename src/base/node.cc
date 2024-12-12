@@ -9,7 +9,8 @@ namespace lvk {
 Node::Node() {}
 
 mat4f Node::localMatrix() {
-#if 0
+#if 1
+  matrix = glm::identity<mat4f>();
   matrix = glm::translate(mat4f{1.0}, transform.translation * vec3f(1, 1, 1));
   matrix = glm::rotate(matrix, glm::radians(transform.rotation.x), vec3f(1, 0, 0));
   matrix = glm::rotate(matrix, glm::radians(transform.rotation.y), vec3f(0, 1, 0));

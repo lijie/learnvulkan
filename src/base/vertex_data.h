@@ -21,4 +21,8 @@ struct VertexLayout {
   Vector2 uv;
 };
 
+struct LineVertexLayout {
+  Vector3 position;
+};
+
 }  // namespace lvk

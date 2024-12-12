@@ -1,26 +1,23 @@
-#include <array>
-#include <iostream>
-
+#define NOMINMAX
 #include "base/scene.h"
 #include "base/node.h"
+#include "base/directional_light.h"
 #include "base/vulkan_app.h"
 #include "base/vulkan_context.h"
+#include "base/mesh_loader.h"
+#include "base/vulkan_tools.h"
 
 namespace lvk {
 using lvk::VulkanApp;
 
 class TwoCubesApp : public VulkanApp {
- private:
-  Scene scene;
+ protected:
+  virtual void InitScene() override;
 
-  void InitScene();
-
- public:
-  virtual void Render(double delta_time) override;
-  virtual void Prepare() override;
 };
 
 void TwoCubesApp::InitScene() {
+  // auto cube_mesh = MeshLoader::LoadMesh(tools::GetModelPath() + "teapot.gltf");
   // prepare resource
   scene.meshList = {
       primitive::cube(),
@@ -30,19 +27,19 @@ void TwoCubesApp::InitScene() {
   };
   scene.materialList = {
       {
-          "06-vert.spv",
-          "06-frag.spv",
+          "06-two-cubes.vert.spv",
+          "06-two-cubes.frag.spv",
       },
   };
 
 
   // init scene
   auto n1 = NewNode<Node>();
-  n1->transform = {
+  n1->SetTransform({
       .translation{-1, 0, 0},
-      .rotation{0, 0, 0},
+      .rotation{45, 0, 0},
       .scale{1, 1, 1},
-  };
+  });
   n1->mesh = 0;
   n1->material = 0;
   n1->materialParamters = {
@@ -50,11 +47,11 @@ void TwoCubesApp::InitScene() {
   };
 
   auto n2 = NewNode<Node>();
-  n2->transform = {
+  n2->SetTransform({
       .translation{+1, 0, 0},
       .rotation{0, 0, 0},
       .scale{1, 1, 1},
-  };
+  });
   n2->mesh = 0;
   n2->material = 0;
   n2->materialParamters = {
@@ -63,21 +60,12 @@ void TwoCubesApp::InitScene() {
 
   scene.AddNode(n1);
   scene.AddNode(n2);
+
+  auto light = NewNode<DirectionalLight>(
+      Transform{.translation{0.0, 0.0, -6.0}, .rotation{0, 0, 0}, .scale{1.0, 1.0, 1.0}}, vec3f{1.0, 1.0, 1.0});
+  scene.AddNode(light);
 }
 
-void TwoCubesApp::Prepare() {
-  VulkanApp::Prepare();
-  InitScene();
-
-  context_->CreateVulkanScene(&scene, vulkanDevice);
-  context_->BuildCommandBuffers(&scene);
-  prepared = true;
-}
-
-void TwoCubesApp::Render(double delta_time) {
-  if (!prepared) return;
-  context_->Draw(&scene);
-}
 }  // namespace lvk
 
 using lvk::TwoCubesApp;

@@ -519,6 +519,26 @@ void VulkanContext::CreatePipelineCache() {
   VK_CHECK_RESULT(vkCreatePipelineCache(device_->device(), &pipelineCacheCreateInfo, nullptr, &pipelineCache_));
 }
 
+void VulkanContext::BuildLinePipeline() {
+  std::vector<VkPipelineColorBlendAttachmentState> colorBlendAttachmentStates;
+  colorBlendAttachmentStates.push_back(initializers::PipelineColorBlendAttachmentState(0xf, VK_FALSE));
+
+  VulkanPipelineBuilder()
+      .dynamicStates({VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR})
+      .primitiveTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
+      .polygonMode(VK_POLYGON_MODE_LINE)
+      .vertexInputState(BuildVertexInputState())
+      .cullMode(VK_CULL_MODE_NONE)
+      .frontFace(VK_FRONT_FACE_COUNTER_CLOCKWISE)
+      .colorBlendAttachmentStates(colorBlendAttachmentStates)
+      .depthWriteEnable(true)
+      .depthCompareOp(VK_COMPARE_OP_LESS_OR_EQUAL)
+      .rasterizationSamples(VK_SAMPLE_COUNT_1_BIT)
+      .shaderStages(GetVkNode(0)->shaderStages)
+      .build(device_->device(), pipelineCache_, PipelineLayout(), renderPass_,
+             &pipelineList[static_cast<std::size_t>(NodeType::Line)], "Line-Pipeline");
+}
+
 void VulkanContext::BuildPipelines() {
   // todo
   CreatePipelineCache();

@@ -26,7 +26,7 @@ void Camera::SetPespective(float fov, float aspect_ratio, float near, float far)
   far_ = far;
 }
 
-// vulkan 使用左手坐标系
+// vulkan 使用右手坐标系
 // camera 看 +z 方向
 void Camera::UpdateMatrix() {
   // vec3f location = vec3f(0, 0, -4);

@@ -15,6 +15,7 @@ enum class NodeType {
   Camera,
   LightSource,
   Skybox,
+  Line,
   MAX,
 };
 
@@ -70,6 +71,11 @@ struct Node {
   void SetLocationAndRotation(const vec3f& location, const vec3f rotation) {
     transform.translation = location;
     SetRotation(rotation);
+    localMatrix();
+  }
+
+  void SetTransform(const Transform& in_transform) {
+    transform = in_transform;
     localMatrix();
   }
 

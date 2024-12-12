@@ -256,6 +256,8 @@ class VulkanContext {
   VkResult CreateInstance(bool enableValidation);
   VkPipelineShaderStageCreateInfo LoadShader(std::string fileName, VkShaderStageFlagBits stage, VulkanDevice *device);
   bool LoadMaterial(VulkanNode *vkNode, const Material *mat, VulkanDevice *device);
+
+  void BuildLinePipeline();
   int FindOrCreatePipeline(const Node& node, const VulkanNode& vkNode);
   void FindOrCreateDescriptorSet(VulkanNode *vkNode);
   // void BuildPipelines();

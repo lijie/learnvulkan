@@ -48,6 +48,7 @@ void PbrBasicApp::InitScene() {
 
   // auto cube_mesh = MeshLoader::LoadMesh("..\\assets\\models\\teapot.gltf");
   auto cube_mesh = MeshLoader::LoadMesh(tools::GetModelPath() + "teapot.gltf");
+  // auto cube_mesh = MeshLoader::LoadMesh(tools::GetModelPath() + "Sponza\\glTF\\Sponza.gltf");
   // prepare resource
   scene.meshList = {
       // primitive::cube(),
