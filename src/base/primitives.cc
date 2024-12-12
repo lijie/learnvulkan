@@ -5,30 +5,26 @@
 
 namespace lvk {
 
-void PrimitiveMeshVK::CreateBuffer(const PrimitiveMesh *mesh, VulkanDevice *device) {
-  for (auto i = 0; i < mesh->sections.size(); i++) {
-    const MeshSection *section = &mesh->sections[i];
+void PrimitiveMeshVK::CreateBuffer(const MeshSection *section, VulkanDevice *device) {
+  if (vertexBuffer == nullptr) {
+    vertexBuffer = new VulkanBuffer();
 
-    if (vertexBuffer == nullptr) {
-      vertexBuffer = new VulkanBuffer();
+    uint32_t vsize = static_cast<uint32_t>(sizeof(VertexLayout) * section->vertices.size());
+    const void *vdata = section->vertices.data();
+    VK_CHECK_RESULT(device->CreateBuffer(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                                         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                                         vertexBuffer, vsize, vdata));
+  }
 
-      uint32_t vsize = static_cast<uint32_t>(sizeof(VertexLayout) * section->vertices.size());
-      const void *vdata = section->vertices.data();
-      VK_CHECK_RESULT(device->CreateBuffer(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-                                           VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                                           vertexBuffer, vsize, vdata));
-    }
+  if (indexBuffer == nullptr) {
+    indexBuffer = new VulkanBuffer();
 
-    if (indexBuffer == nullptr) {
-      indexBuffer = new VulkanBuffer();
-
-      // TODO: bug? sizeof(uint32)?
-      uint32_t isize = static_cast<uint32_t>(sizeof(uint32_t) * section->indices.size());
-      const void *idata = section->indices.data();
-      VK_CHECK_RESULT(device->CreateBuffer(VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-                                           VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                                           indexBuffer, isize, idata));
-    }
+    // TODO: bug? sizeof(uint32)?
+    uint32_t isize = static_cast<uint32_t>(sizeof(uint32_t) * section->indices.size());
+    const void *idata = section->indices.data();
+    VK_CHECK_RESULT(device->CreateBuffer(VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+                                         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                                         indexBuffer, isize, idata));
   }
 }
 

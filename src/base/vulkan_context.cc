@@ -71,29 +71,45 @@ void VulkanContext::CreateVulkanScene(Scene* scene, VulkanDevice* device) {
 
   std::cout << std::format("VulkanScene: Total Node: {}\n", scene->GetNodeCount());
 
-  vkNodeList.resize(scene->GetNodeCount());
-  vkMeshList.resize(scene->GetNodeCount());
+  // calc total mesh sections
+  size_t num_sections = 0;
+  for (int i = 0; i < scene->GetNodeCount(); i++) {
+    num_sections += scene->GetResourceMesh(scene->GetNode(i)->mesh)->sections.size();
+  }
+
+  vkNodeList.resize(num_sections);
+  vkMeshList.resize(num_sections);
+
+  size_t index = 0;
   for (int i = 0; i < scene->GetNodeCount(); i++) {
     const auto& node = scene->GetNode(i);
-    auto& vknode = vkNodeList[i];
-    vkMeshList[i].CreateBuffer(scene->GetResourceMesh(node->mesh), device);
-    vkMeshList[i].indexCount = scene->GetResourceMesh(node->mesh)->sections[0].indices.size();
+    const PrimitiveMesh *mesh = scene->GetResourceMesh(node->mesh);
+    for (auto j = 0; j < mesh->sections.size(); j++) {
+      const MeshSection* section = &mesh->sections[j];
 
-    std::cout << std::format("VulkanScene: CreateMessBuffer,NodeMesh:{},vkMesh:{}\n", node->mesh, i);
+      VulkanNode& vknode = vkNodeList[index];
+      PrimitiveMeshVK& vkmesh = vkMeshList[index];
+      vknode.vkMesh = &vkMeshList[index];
 
-    if (node->materialParamters.textureList.size() > 0) {
-      auto texture_handle = node->materialParamters.textureList[0];
-      auto texture = new VulkanTexture(device, scene->GetResourceTexture(texture_handle)->path, queue_);
-      texture->LoadTexture();
-      vkTextureList.push_back(texture);
-      vknode.vkTexture = vkTextureList.back();
-      vknode.vkTextureHandle = vkTextureList.size() - 1;
-      std::cout << std::format("VulkanScene: LoadTexture,vkTextureHandle:{}\n", vknode.vkTextureHandle);
+      index++;
+
+      vkmesh.CreateBuffer(section, device);
+      vkmesh.indexCount = section->indices.size();
+
+      std::cout << std::format("VulkanScene: CreateMessBuffer,NodeMesh:{},vkMesh:{}\n", node->mesh, i);
+      if (node->materialParamters.textureList.size() > 0) {
+        auto texture_handle = node->materialParamters.textureList[0];
+        auto texture = new VulkanTexture(device, scene->GetResourceTexture(texture_handle)->path, queue_);
+        texture->LoadTexture();
+        vkTextureList.push_back(texture);
+        vknode.vkTexture = vkTextureList.back();
+        vknode.vkTextureHandle = 0;//vkTextureList.size() - 1;
+        std::cout << std::format("VulkanScene: LoadTexture,vkTextureHandle:{}\n", vknode.vkTextureHandle);
+      }
+
+      LoadMaterial(&vknode, scene->GetResourceMaterial(node->material), device);
+      vknode.pipelineHandle = FindOrCreatePipeline(*node, vknode);
     }
-    vknode.vkMesh = &vkMeshList[i];
-
-    LoadMaterial(&vknode, scene->GetResourceMaterial(node->material), device);
-    vknode.pipelineHandle = FindOrCreatePipeline(*node, vknode);
   }
 
   PrepareUniformBuffers(scene, device);

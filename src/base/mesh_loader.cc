@@ -15,11 +15,17 @@
 
 namespace lvk {
 
+static size_t GetMeshPrimitivSize(const tinygltf::Mesh& mesh) {
+#if 1
+  return mesh.primitives.size();
+#else
+  return 1;
+#endif
+}
+
 static void CopyToPrimitiveMeshIndices(lvk::PrimitiveMesh* lvk_mesh, const tinygltf::Model& model,
                                        const tinygltf::Mesh& mesh) {
-  // only support one primitives now
-  assert(mesh.primitives.size() == 1);
-  for (size_t i = 0; i < mesh.primitives.size(); ++i) {
+  for (size_t i = 0; i < GetMeshPrimitivSize(mesh); ++i) {
     tinygltf::Primitive primitive = mesh.primitives[i];
     tinygltf::Accessor indexAccessor = model.accessors[primitive.indices];
 
@@ -38,7 +44,7 @@ static void CopyToPrimitiveMeshIndices(lvk::PrimitiveMesh* lvk_mesh, const tinyg
 
 static void CopyToPrimitiveMeshAttribute(lvk::PrimitiveMesh* lvk_mesh, const tinygltf::Model& model,
                                          const tinygltf::Mesh& mesh) {
-  for (size_t i = 0; i < mesh.primitives.size(); ++i) {
+  for (size_t i = 0; i < GetMeshPrimitivSize(mesh); ++i) {
     const tinygltf::Primitive& primitive = mesh.primitives[i];
     MeshSection *section = &lvk_mesh->sections[i];
 
@@ -86,7 +92,7 @@ static void CopyToPrimitiveMeshAttribute(lvk::PrimitiveMesh* lvk_mesh, const tin
 }
 
 static std::unique_ptr<PrimitiveMesh> LoadGltfMesh(const tinygltf::Model& model, const tinygltf::Mesh& mesh) {
-  auto result = std::make_unique<PrimitiveMesh>();
+  auto result = std::make_unique<PrimitiveMesh>(GetMeshPrimitivSize(mesh));
 
   for (size_t i = 0; i < model.bufferViews.size(); ++i) {
     const tinygltf::BufferView& bufferView = model.bufferViews[i];
@@ -113,7 +119,7 @@ static std::unique_ptr<PrimitiveMesh> LoadGltfMesh(const tinygltf::Model& model,
   CopyToPrimitiveMeshIndices(result.get(), model, mesh);
   CopyToPrimitiveMeshAttribute(result.get(), model, mesh);
 
-  for (size_t i = 0; i < mesh.primitives.size(); ++i) {
+  for (size_t i = 0; i < GetMeshPrimitivSize(mesh); ++i) {
     tinygltf::Primitive primitive = mesh.primitives[i];
     tinygltf::Accessor indexAccessor = model.accessors[primitive.indices];
 
