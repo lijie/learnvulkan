@@ -9,9 +9,19 @@
 
 namespace lvk {
 
-struct PrimitiveMesh {
+struct MeshSection {
   std::vector<VertexLayout> vertices;
   std::vector<uint32_t> indices;
+};
+
+struct PrimitiveMesh {
+  PrimitiveMesh() {
+    // one section at least
+    sections.resize(1);
+  }
+
+  PrimitiveMesh(const MeshSection& section) { sections.push_back(section); }
+  std::vector<MeshSection> sections;
 };
 
 // todo: move to vulkan context
@@ -19,8 +29,6 @@ struct PrimitiveMesh {
 struct PrimitiveMeshVK {
   VulkanBuffer* vertexBuffer{nullptr};
   VulkanBuffer* indexBuffer{nullptr};
-  std::array<VkVertexInputBindingDescription, 1> bindingDescriptions;
-  std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions;
   VkPipelineVertexInputStateCreateInfo inputState;
   uint32_t indexCount{0};
 

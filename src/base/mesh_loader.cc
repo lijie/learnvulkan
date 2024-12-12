@@ -6,6 +6,7 @@
 #include <string_view>
 
 #include "lvk_log.h"
+#include "primitives.h"
 
 
 #define TINYGLTF_IMPLEMENTATION
@@ -18,23 +19,28 @@ static void CopyToPrimitiveMeshIndices(lvk::PrimitiveMesh* lvk_mesh, const tinyg
                                        const tinygltf::Mesh& mesh) {
   // only support one primitives now
   assert(mesh.primitives.size() == 1);
-  tinygltf::Primitive primitive = mesh.primitives[0];
-  tinygltf::Accessor indexAccessor = model.accessors[primitive.indices];
+  for (size_t i = 0; i < mesh.primitives.size(); ++i) {
+    tinygltf::Primitive primitive = mesh.primitives[i];
+    tinygltf::Accessor indexAccessor = model.accessors[primitive.indices];
 
-  const tinygltf::BufferView& bufferView = model.bufferViews[indexAccessor.bufferView];
-  const tinygltf::Buffer& buffer = model.buffers[bufferView.buffer];
-  int byteStride = indexAccessor.ByteStride(model.bufferViews[indexAccessor.bufferView]);
+    const tinygltf::BufferView& bufferView = model.bufferViews[indexAccessor.bufferView];
+    const tinygltf::Buffer& buffer = model.buffers[bufferView.buffer];
+    int byteStride = indexAccessor.ByteStride(model.bufferViews[indexAccessor.bufferView]);
 
-  lvk_mesh->indices.resize(indexAccessor.count);
-  for (int j = 0; j < lvk_mesh->indices.size(); j++) {
-    memcpy(&lvk_mesh->indices[j], &buffer.data.at(0) + bufferView.byteOffset + j * byteStride, byteStride);
+    MeshSection* section = &lvk_mesh->sections[i];
+
+    section->indices.resize(indexAccessor.count);
+    for (int j = 0; j < section->indices.size(); j++) {
+      memcpy(&section->indices[j], &buffer.data.at(0) + bufferView.byteOffset + j * byteStride, byteStride);
+    }
   }
 }
 
 static void CopyToPrimitiveMeshAttribute(lvk::PrimitiveMesh* lvk_mesh, const tinygltf::Model& model,
                                          const tinygltf::Mesh& mesh) {
   for (size_t i = 0; i < mesh.primitives.size(); ++i) {
-    tinygltf::Primitive primitive = mesh.primitives[i];
+    const tinygltf::Primitive& primitive = mesh.primitives[i];
+    MeshSection *section = &lvk_mesh->sections[i];
 
     for (auto& attrib : primitive.attributes) {
       tinygltf::Accessor accessor = model.accessors[attrib.second];
@@ -54,23 +60,23 @@ static void CopyToPrimitiveMeshAttribute(lvk::PrimitiveMesh* lvk_mesh, const tin
       if (attrib.first.compare("TEXCOORD_0") == 0) vaa = 2;
       if (vaa > -1) {
         DEBUG_LOG("found attribute: {}, type: {}", attrib.first, accessor.type);
-        if (lvk_mesh->vertices.size() < accessor.count) {
-          lvk_mesh->vertices.resize(accessor.count);
+        if (section->vertices.size() < accessor.count) {
+          section->vertices.resize(accessor.count);
           // lvk_mesh->indices.resize(accessor.count);
         }
         if (vaa == 0) {
-          for (auto j = 0; j < lvk_mesh->vertices.size(); j++) {
-            memcpy(&lvk_mesh->vertices[j].position, &buffer.data.at(0) + bufferView.byteOffset + byteStride * j,
+          for (auto j = 0; j < section->vertices.size(); j++) {
+            memcpy(&section->vertices[j].position, &buffer.data.at(0) + bufferView.byteOffset + byteStride * j,
                    byteStride);
           }
         } else if (vaa == 1) {
-          for (auto j = 0; j < lvk_mesh->vertices.size(); j++) {
-            memcpy(&lvk_mesh->vertices[j].normal, &buffer.data.at(0) + bufferView.byteOffset + byteStride * j,
+          for (auto j = 0; j < section->vertices.size(); j++) {
+            memcpy(&section->vertices[j].normal, &buffer.data.at(0) + bufferView.byteOffset + byteStride * j,
                    byteStride);
           }
         } else if (vaa == 2) {
-          for (auto j = 0; j < lvk_mesh->vertices.size(); j++) {
-            memcpy(&lvk_mesh->vertices[j].uv, &buffer.data.at(0) + bufferView.byteOffset + byteStride * j, byteStride);
+          for (auto j = 0; j < section->vertices.size(); j++) {
+            memcpy(&section->vertices[j].uv, &buffer.data.at(0) + bufferView.byteOffset + byteStride * j, byteStride);
           }
         }
       } else

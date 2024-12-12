@@ -77,7 +77,7 @@ void VulkanContext::CreateVulkanScene(Scene* scene, VulkanDevice* device) {
     const auto& node = scene->GetNode(i);
     auto& vknode = vkNodeList[i];
     vkMeshList[i].CreateBuffer(scene->GetResourceMesh(node->mesh), device);
-    vkMeshList[i].indexCount = scene->GetResourceMesh(node->mesh)->indices.size();
+    vkMeshList[i].indexCount = scene->GetResourceMesh(node->mesh)->sections[0].indices.size();
 
     std::cout << std::format("VulkanScene: CreateMessBuffer,NodeMesh:{},vkMesh:{}\n", node->mesh, i);
 
