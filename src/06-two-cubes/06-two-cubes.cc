@@ -32,34 +32,22 @@ void TwoCubesApp::InitScene() {
       },
   };
 
-
-  // init scene
-  auto n1 = NewNode<Node>();
-  n1->SetTransform({
-      .translation{-1, 0, 0},
-      .rotation{45, 0, 0},
-      .scale{1, 1, 1},
-  });
-  n1->mesh = 0;
-  n1->material = 0;
-  n1->materialParamters = {
-      .textureList{0},
-  };
-
-  auto n2 = NewNode<Node>();
-  n2->SetTransform({
-      .translation{+1, 0, 0},
-      .rotation{0, 0, 0},
-      .scale{1, 1, 1},
-  });
-  n2->mesh = 0;
-  n2->material = 0;
-  n2->materialParamters = {
-      .textureList{0},
-  };
-
-  scene.AddNode(n1);
-  scene.AddNode(n2);
+  for (int i = 0; i < 8; i++) {
+    for (int j = 0; j < 8; j++) {
+    auto n1 = NewNode<Node>();
+    n1->SetTransform({
+        .translation{(-4 + i) * 1.5, (-4 + j) * 1.5, 0},
+        .rotation{0, 0, 45},
+        .scale{1, 1, 1},
+    });
+    n1->mesh = 0;
+    n1->material = 0;
+    n1->materialParamters = {
+        .textureList{0},
+    };
+    scene.AddNode(n1);
+    }
+  }
 
   auto light = NewNode<DirectionalLight>(
       Transform{.translation{0.0, 0.0, -6.0}, .rotation{0, 0, 0}, .scale{1.0, 1.0, 1.0}}, vec3f{1.0, 1.0, 1.0});

@@ -2,6 +2,7 @@
 
 #include "glm/ext/matrix_transform.hpp"
 #include "glm/trigonometric.hpp"
+#include "lvk_log.h"
 #include "lvk_math.h"
 
 namespace lvk {
@@ -9,10 +10,11 @@ namespace lvk {
 Node::Node() {}
 
 mat4f Node::localMatrix() {
-#if 1
-  matrix = glm::identity<mat4f>();
+#if 0
+  matrix = mat4f(1.0);
   matrix = glm::translate(mat4f{1.0}, transform.translation * vec3f(1, 1, 1));
   matrix = glm::rotate(matrix, glm::radians(transform.rotation.x), vec3f(1, 0, 0));
+  // DEBUG_LOG("apply rotate: {}", glm::to_string(matrix));
   matrix = glm::rotate(matrix, glm::radians(transform.rotation.y), vec3f(0, 1, 0));
   matrix = glm::rotate(matrix, glm::radians(transform.rotation.z), vec3f(0, 0, 1));
 #else
@@ -21,19 +23,18 @@ mat4f Node::localMatrix() {
 
   matrix = glm::identity<mat4f>();
 
-  matrix[3][0] = transform.translation.x;
-  matrix[3][1] = transform.translation.y;
-  matrix[3][2] = transform.translation.z;
-
   float SX = sin(glm::radians(transform.rotation.x));
   float CX = cos(glm::radians(transform.rotation.x));
 
   mat4f RMX = {
       {1.0f, 0.0f, 0.0f, 0.0f},
       {0.0f, CX, SX, 0.0f},
-      {0.0f, SX, CX, 0.0f},
+      {0.0f, -SX, CX, 0.0f},
       {0.0f, 0.0f, 0.0f, 1.0f},
   };
+
+  // DEBUG_LOG("RMX: {}", glm::to_string(RMX));
+  // DEBUG_LOG("apply RMX: {}", glm::to_string(RMX * matrix));
 
   float SY = sin(glm::radians(transform.rotation.y));
   float CY = cos(glm::radians(transform.rotation.y));
@@ -56,6 +57,10 @@ mat4f Node::localMatrix() {
   };
 
   matrix = RMZ * RMY * RMX * matrix;
+
+  matrix[3][0] = transform.translation.x;
+  matrix[3][1] = transform.translation.y;
+  matrix[3][2] = transform.translation.z;
 #endif
   return matrix;
 }
