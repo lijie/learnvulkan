@@ -7,6 +7,8 @@ set(GLSLC ${Vulkan_INCLUDE_DIR}/../Bin/glslc.exe)
 
 include_directories(${CMAKE_SOURCE_DIR}/src)
 
+# set ( CMAKE_VERBOSE_MAKEFILE true )
+
 # for w32
 add_compile_definitions(VK_USE_PLATFORM_WIN32_KHR)
 # for vsprintf
@@ -52,6 +54,7 @@ if (true)
 	set(dep_libs glfw base Vulkan::Vulkan)
 	#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /utf-8 /std:c++20")
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20")
+	SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
 else ()
   set(dep_libs ${dep_libs_common} ${dep_libs_linux})
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
@@ -61,6 +64,7 @@ macro(add_shader_target)
 	add_custom_command(
 		OUTPUT ${CMAKE_SOURCE_DIR}/${ARGV2}
 		COMMAND ${GLSLC} ${CMAKE_SOURCE_DIR}/${ARGV1} -o ${CMAKE_SOURCE_DIR}/${ARGV2}
+		DEPENDS ${CMAKE_SOURCE_DIR}/${ARGV1}
 	)
 	add_custom_target(${ARGV0} DEPENDS ${CMAKE_SOURCE_DIR}/${ARGV2})
 endmacro(add_shader_target)
