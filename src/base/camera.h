@@ -17,6 +17,8 @@ class Camera : public Node {
   void SetPespective(float fov, float aspect_ratio, float near, float far);
   void UpdateMatrix();
 
+  virtual void SetRotation(const vec3f& in) override;
+
  private:
   CameraMatrix camera_materix_;
 

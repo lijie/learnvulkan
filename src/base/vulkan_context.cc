@@ -96,7 +96,7 @@ void VulkanContext::CreateVulkanScene(Scene* scene, VulkanDevice* device) {
       vkmesh.CreateBuffer(section, device);
       vkmesh.indexCount = section->indices.size();
 
-      std::cout << std::format("VulkanScene: CreateMessBuffer,NodeMesh:{},vkMesh:{}\n", node->mesh, i);
+      // std::cout << std::format("VulkanScene: CreateMessBuffer,NodeMesh:{},vkMesh:{}\n", node->mesh, i);
       if (node->materialParamters.textureList.size() > 0) {
         auto texture_handle = node->materialParamters.textureList[0];
         auto texture = new VulkanTexture(device, scene->GetResourceTexture(texture_handle)->path, queue_);
@@ -104,7 +104,7 @@ void VulkanContext::CreateVulkanScene(Scene* scene, VulkanDevice* device) {
         vkTextureList.push_back(texture);
         vknode.vkTexture = vkTextureList.back();
         vknode.vkTextureHandle = 0;//vkTextureList.size() - 1;
-        std::cout << std::format("VulkanScene: LoadTexture,vkTextureHandle:{}\n", vknode.vkTextureHandle);
+        // std::cout << std::format("VulkanScene: LoadTexture,vkTextureHandle:{}\n", vknode.vkTextureHandle);
       }
 
       LoadMaterial(&vknode, scene->GetResourceMaterial(node->material), device);
@@ -172,7 +172,7 @@ void VulkanContext::UpdateVertexUniformBuffers(Scene* scene) {
   // update model matrix
   scene->ForEachNode([this, camera_matrix](Node* n, int idx) {
     auto& ubo = uniformBuffers_.model[idx];
-    ubo.model = n->localMatrix();
+    ubo.model = n->ModelMatrix();
     ubo.projection = camera_matrix.proj;
     ubo.view = camera_matrix.view;
   });

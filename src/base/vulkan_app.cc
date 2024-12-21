@@ -1,3 +1,7 @@
+#include <cstdlib>
+#include "glm/ext/matrix_transform.hpp"
+#include "glm/trigonometric.hpp"
+#define NOMINMAX
 #include "vulkan_app.h"
 
 #include <iostream>
@@ -16,6 +20,9 @@
 #include "window.h"
 
 #include "lvk_log.h"
+
+#include <glm/gtx/rotate_vector.hpp>
+#include <glm/gtx/vector_angle.hpp>
 
 namespace lvk {
 std::vector<const char *> VulkanApp::args;
@@ -40,7 +47,11 @@ void DefaultCameraMoveInput::OnRotationInput(const DirectionInput &ri) {
 
 void DefaultCameraMoveInput::OnMouseClick(MouseButton button, MouseState action) {
   if (button == MouseButton::Left) {
-    mouse_left_down_ = (action == MouseState::Down);
+    auto tmp = (action == MouseState::Down);
+    if (tmp != mouse_left_down_) {
+      DEBUG_LOG("mouse_left_down: {} -> {}", mouse_left_down_, tmp);
+      mouse_left_down_ = tmp;
+    }
   }
 
   if (mouse_left_down_) {
@@ -57,13 +68,13 @@ void DefaultCameraMoveInput::OnMouseMove(double x, double y) {
       return;
     }
 
-    DEBUG_LOG("last_mouse_position: {}", glm::to_string(last_mouse_position_));
-    DEBUG_LOG("current_pos: {}", glm::to_string(current_pos));
+    // DEBUG_LOG("last_mouse_position: {}", glm::to_string(last_mouse_position_));
+    // DEBUG_LOG("current_pos: {}", glm::to_string(current_pos));
 
     mouse_move_delta_ += current_pos - last_mouse_position_;
     last_mouse_position_ = current_pos;
 
-    DEBUG_LOG("mouse_move_delta_: {}", glm::to_string(mouse_move_delta_));
+    // DEBUG_LOG("mouse_move_delta_: {}", glm::to_string(mouse_move_delta_));
   }
 }
 
@@ -84,6 +95,48 @@ void DefaultCameraMoveInput::OnKey(KeyCode key, KeyState action) {
     default:
       break;
   }
+}
+
+void DefaultCameraMoveInput::UpdateMouseLookMode(float delta_time) {
+  if (!mouse_left_down_) {
+    return;
+  }
+
+  bool a = abs(mouse_move_delta_.x) > abs(mouse_move_delta_.y);
+
+  if (a) {
+    auto location = camera_->GetLocation();
+    auto angle = mouse_move_delta_.x * 0.0125f;
+    auto new_location = glm::rotate(location, angle, vec3f(0, 1, 0));
+    camera_->SetLocation(new_location);
+
+    auto rm = glm::inverse(glm::lookAt(vec3f(0.0f, 0.0f, 0.0f), new_location, vec3f(0.0f, 1.0f, 0.0f)));
+    camera_->SetRotationMatrix(rm);
+
+    // auto rotation = camera_->GetRotation() + vec3f(0, glm::degrees(angle), 0);
+    // camera_->SetRotation(rotation);
+    mouse_move_delta_.x = 0;
+  } else {
+    // clamp pitch (-90, 90)
+    auto current_rotation = camera_->GetRotation();
+    auto angle = mouse_move_delta_.y * 0.0125f;
+    auto angle_degree = glm::degrees(angle);
+
+    // if ((current_rotation.x + angle_degree) > -90.0 && (current_rotation.x + angle_degree) < 90.0) {
+      auto location = camera_->GetLocation();
+      auto new_location = glm::rotate(location, angle, vec3f(1, 0, 0));
+      camera_->SetLocation(new_location);
+
+      auto rm = glm::inverse(glm::lookAt(vec3f(0.0f, 0.0f, 0.0f), new_location, vec3f(0.0f, 1.0f, 0.0f)));
+      camera_->SetRotationMatrix(rm);
+      // auto rotation = camera_->GetRotation() + vec3f(angle_degree, 0, 0);
+      // camera_->SetRotation(rotation);
+    // }
+    mouse_move_delta_.y = 0;
+  }
+
+  // DEBUG_LOG("Camera location: {}", glm::to_string(camera_->GetLocation()));
+  // DEBUG_LOG("Camera rotation: {}", glm::to_string(camera_->GetRotation()));
 }
 
 void DefaultCameraMoveInput::Update(float delta_time) {
@@ -112,18 +165,43 @@ void DefaultCameraMoveInput::Update(float delta_time) {
   }
   camera_->SetLocation(camera_->GetLocation() + move_vec);
 
-  if (glm::epsilonNotEqual(mouse_move_delta_.x, 0.0f, 0.00001f)) {
+  UpdateMouseLookMode(delta_time);
+
+#if 0
+  bool a = mouse_move_delta_.x > mouse_move_delta_.y;
+
+  if (1 && glm::epsilonNotEqual(mouse_move_delta_.x, 0.0f, 0.00001f)) {
+#if 0
     auto rotation = camera_->GetRotation();
     rotation.y += mouse_move_delta_.x * 0.125;
     mouse_move_delta_.x = 0;
     camera_->SetRotation(rotation);
+#endif
+    auto location = camera_->GetLocation();
+    auto angle = mouse_move_delta_.x * 0.0125f;
+    auto new_location = glm::rotate(location, angle, vec3f(0, 1, 0));
+    camera_->SetLocation(new_location);
+    auto rotation = camera_->GetRotation() + vec3f(0, glm::degrees(angle), 0);
+    camera_->SetRotation(rotation);
+    mouse_move_delta_.x = 0;
   }
-  if (glm::epsilonNotEqual(mouse_move_delta_.y, 0.0f, 0.00001f)) {
+
+  if (0 && glm::epsilonNotEqual(mouse_move_delta_.y, 0.0f, 0.00001f)) {
+#if 0
     auto rotation = camera_->GetRotation();
     rotation.x += mouse_move_delta_.y * 0.125;
     mouse_move_delta_.y = 0;
     camera_->SetRotation(rotation);
+#endif
+    auto location = camera_->GetLocation();
+    auto angle = mouse_move_delta_.y * 0.0125f;
+    auto new_location = glm::rotate(location, angle, vec3f(1, 0, 0));
+    camera_->SetLocation(new_location);
+    auto rotation = camera_->GetRotation() + vec3f(glm::degrees(angle), 0, 0);
+    camera_->SetRotation(rotation);
+    mouse_move_delta_.y = 0;
   }
+#endif
 }
 
 bool VulkanApp::InitVulkan() {

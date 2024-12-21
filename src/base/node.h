@@ -29,7 +29,6 @@ struct Node {
   int mesh{-1};
   int material{0};
   MaterialParamters materialParamters;
-  mat4f matrix{1.0};
 
   NodeType node_type{NodeType::Object};
   NodeFlags flags;
@@ -42,31 +41,24 @@ struct Node {
   }
   Node(const Transform& in_transform) : Node(in_transform, NodeType::Object) {}
 
-  mat4f localMatrix();
-
   vec3f Rotation() const { return transform.rotation; }
 
   vec3f Translation() const { return transform.translation; }
 
   vec3f Scale() const { return transform.scale; }
 
+  const mat4f& ModelMatrix() { return matrix; }
+
   inline void ClampRotation(float& x) {
-    if (x > +360) x -= 360;
-    if (x < -360) x += 360;
+    while (x > +360) x -= 360;
+    while (x < -360) x += 360;
   }
 
-  void SetRotation(const vec3f& in) {
-    transform.rotation = in;
-    ClampRotation(transform.rotation.y);
-    ClampRotation(transform.rotation.x);
-    ClampRotation(transform.rotation.z);
-    localMatrix();
-  }
+  virtual void SetRotation(const vec3f& in);
 
-  void SetLocation(const vec3f& in) {
-    transform.translation = in;
-    localMatrix();
-  }
+  void SetLocation(const vec3f& in);
+
+  void SetRotationMatrix(const mat4f& in_matrix);
 
   void SetLocationAndRotation(const vec3f& location, const vec3f rotation) {
     transform.translation = location;
@@ -88,6 +80,16 @@ struct Node {
     return glm::normalize(vec3f(matrix[0][0], matrix[0][1], matrix[0][2])) * -1.0f;
   }
   std::string GetLocalMatrixString();
+
+ private:
+  mat4f localMatrix();
+  void UpdateModelMatrixTranslation();
+
+  // model matrix
+  mat4f matrix{1.0};
+
+  // rotation matrix
+  mat4f rot_matrix{1.0};
 };
 
 typedef std::shared_ptr<Node> SNode;

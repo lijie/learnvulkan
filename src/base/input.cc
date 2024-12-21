@@ -60,7 +60,7 @@ void InputSystem::OnKey(int key, int action) {
 }
 
 void InputSystem::OnMouseClick(int button, int action) {
-  DEBUG_LOG("click, button:{}, action:{}", button, action);
+  // DEBUG_LOG("click, button:{}, action:{}", button, action);
   mouse_state_[button] = action;
 
   for (const auto& ic : ic_array_) {

@@ -35,6 +35,8 @@ class DefaultCameraMoveInput : public InputComponent {
   virtual void OnKey(KeyCode key, KeyState action) override;
   void Update(float delta_time);
 
+  void UpdateMouseLookMode(float delta_time);
+
  private:
   Camera *camera_;
   vec3f input_vec_;
@@ -50,6 +52,9 @@ class DefaultCameraMoveInput : public InputComponent {
 
   // key
   KeyState key_state_[4];
+
+  // look mode
+  int mouse_move_dir_look_mode_{0};
 };
 
 class VulkanApp {

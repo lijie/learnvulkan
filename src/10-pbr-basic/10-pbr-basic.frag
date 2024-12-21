@@ -116,5 +116,5 @@ void main()
 
 	// vec4 color = texture(samplerColor, inUV);
 	// BlinnPhong(L, N, V);
-	outFragColor = vec4(color, 1.0);	
+	outFragColor = vec4(color, 1.0);
 }
