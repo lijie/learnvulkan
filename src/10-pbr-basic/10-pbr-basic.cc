@@ -1,3 +1,6 @@
+#include <glm/ext/matrix_float4x4.hpp>
+#include <glm/trigonometric.hpp>
+#include "base/lvk_math.h"
 #define NOMINMAX
 #include "base/vulkan_app.h"
 
@@ -9,6 +12,8 @@
 #include "base/vulkan_tools.h"
 #include "base/lvk_log.h"
 #include "base/vulkan_ui.h"
+
+#include <glm/gtx/euler_angles.hpp>
 
 lvk::PrimitiveMesh test_lvk_mesh;
 
@@ -40,6 +45,34 @@ void PbrBasicApp::TestNode() {
 
   n->SetRotation(vec3f(30.0f, 30.0f, 30.0f));
   DEBUG_LOG("TestNode,RotationXYZ30,Matrix:\n{}", n->GetLocalMatrixString());
+
+  vec3f rot(45.0, 45.0, 45.0);
+  vec3f translate(5.0, 6.0, 7.0);
+
+  auto rm = glm::eulerAngleYXZ(glm::radians(rot.y), glm::radians(rot.x), glm::radians(rot.z));
+  DEBUG_LOG("TestNode,eulerAngleYXZ,Matrix:\n{}", glm::to_string(rm));
+
+  mat4f rot_mat{1.0};
+  rot_mat = glm::rotate(rot_mat, glm::radians(rot.y), vec3f(0.0, 1.0, 0.0));
+  rot_mat = glm::rotate(rot_mat, glm::radians(rot.x), vec3f(1.0, 0.0, 0.0));
+  rot_mat = glm::rotate(rot_mat, glm::radians(rot.z), vec3f(0.0, 0.0, 1.0));
+  DEBUG_LOG("TestNode,rotateYXZ,Matrix:\n{}", glm::to_string(rot_mat));
+
+  // eulerAngleYXZ 等价于 YXZ 顺序各旋转一次
+  assert(rm == rot_mat);
+
+  // 旋转顺序不同, 旋转矩阵不同
+  mat4f rot_mat2{1.0};
+  rot_mat2 = glm::rotate(rot_mat2, glm::radians(rot.x), vec3f(1.0, 0.0, 0.0));
+  rot_mat2 = glm::rotate(rot_mat2, glm::radians(rot.y), vec3f(0.0, 1.0, 0.0));
+  rot_mat2 = glm::rotate(rot_mat2, glm::radians(rot.z), vec3f(0.0, 0.0, 1.0));
+  DEBUG_LOG("TestNode,rotateXYZ,Matrix:\n{}", glm::to_string(rot_mat2));
+
+  // translate 顺序不同, 矩阵不同
+  // 原则上, translate 应该在最后 apply
+  auto tra_mat = glm::translate(glm::mat4{1.0}, translate);
+  DEBUG_LOG("TestNode,rotate before translate,Matrix:\n{}", glm::to_string(tra_mat * rot_mat));
+  DEBUG_LOG("TestNode,rotate after translate,Matrix:\n{}", glm::to_string(rot_mat * tra_mat));
 }
 
 void PbrBasicApp::InitScene() {

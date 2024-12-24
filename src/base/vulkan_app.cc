@@ -19,6 +19,7 @@
 #include "vulkan_ui.h"
 #include "window.h"
 
+#include "lvk_math.h"
 #include "lvk_log.h"
 
 #include <glm/gtx/rotate_vector.hpp>
@@ -109,34 +110,18 @@ void DefaultCameraMoveInput::UpdateMouseLookMode(float delta_time) {
     auto angle = mouse_move_delta_.x * 0.0125f;
     auto new_location = glm::rotate(location, angle, vec3f(0, 1, 0));
     camera_->SetLocation(new_location);
-
-    auto rm = glm::inverse(glm::lookAt(vec3f(0.0f, 0.0f, 0.0f), new_location, vec3f(0.0f, 1.0f, 0.0f)));
-    camera_->SetRotationMatrix(rm);
-
-    // auto rotation = camera_->GetRotation() + vec3f(0, glm::degrees(angle), 0);
-    // camera_->SetRotation(rotation);
+    auto rot_mat = matrix::MakeFromLookAt(new_location, vec3f(0.0f, 0.0f, 0.0f));
+    camera_->SetRotationMatrix(rot_mat);
     mouse_move_delta_.x = 0;
   } else {
-    // clamp pitch (-90, 90)
-    auto current_rotation = camera_->GetRotation();
+    auto location = camera_->GetLocation();
     auto angle = mouse_move_delta_.y * 0.0125f;
-    auto angle_degree = glm::degrees(angle);
-
-    // if ((current_rotation.x + angle_degree) > -90.0 && (current_rotation.x + angle_degree) < 90.0) {
-      auto location = camera_->GetLocation();
-      auto new_location = glm::rotate(location, angle, vec3f(1, 0, 0));
-      camera_->SetLocation(new_location);
-
-      auto rm = glm::inverse(glm::lookAt(vec3f(0.0f, 0.0f, 0.0f), new_location, vec3f(0.0f, 1.0f, 0.0f)));
-      camera_->SetRotationMatrix(rm);
-      // auto rotation = camera_->GetRotation() + vec3f(angle_degree, 0, 0);
-      // camera_->SetRotation(rotation);
-    // }
+    auto new_location = glm::rotate(location, angle, vec3f(1, 0, 0));
+    camera_->SetLocation(new_location);
+    auto rot_mat = matrix::MakeFromLookAt(new_location, vec3f(0.0f, 0.0f, 0.0f));
+    camera_->SetRotationMatrix(rot_mat);
     mouse_move_delta_.y = 0;
   }
-
-  // DEBUG_LOG("Camera location: {}", glm::to_string(camera_->GetLocation()));
-  // DEBUG_LOG("Camera rotation: {}", glm::to_string(camera_->GetRotation()));
 }
 
 void DefaultCameraMoveInput::Update(float delta_time) {

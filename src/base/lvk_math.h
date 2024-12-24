@@ -21,6 +21,19 @@ namespace vector {
 constexpr vec3f UP = vec3f(0.0, 1.0, 0.0);
 constexpr vec3f RIGHT = vec3f(1.0, 0.0, 0.0);
 constexpr vec3f FORWARD = vec3f(0.0, 0.0, 1.0);
+
 }  // namespace vector
+
+namespace matrix {
+// 通过 forward 轴构造旋转矩阵
+mat4f MakeFromZ(const vec3f& z_axis);
+// 通过LookAt构造旋转矩阵
+mat4f MakeFromLookAt(const vec3f& start, const vec3f& target);
+
+// 从 4x4 矩阵中分解 Rotation
+vec3f DecomposeRotationFromMatrix(const mat4f in_matrix);
+// 从 4x4 矩阵中分解 translation, scale & rotation
+void DecomposeMatrix(const mat4f in_matrix, vec3f& out_translate, vec3f& out_scale, vec3f& out_rot);
+}
 
 }  // namespace lvk

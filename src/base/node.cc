@@ -5,6 +5,7 @@
 #include <glm/gtx/quaternion.hpp>
 #include "glm/trigonometric.hpp"
 #include <glm/gtc/epsilon.hpp>
+// #include <glm/gtx/decomposition.hpp>
 #include "lvk_log.h"
 #include "lvk_math.h"
 
@@ -110,10 +111,11 @@ void Node::SetLocation(const vec3f& in) {
 void Node::SetRotationMatrix(const mat4f& in_matrix) {
   matrix = glm::translate(mat4f{1.0}, transform.translation * vec3f(1, 1, 1));
 
-  glm::quat quat(in_matrix);
-  transform.rotation.x = glm::degrees(glm::pitch(quat));
-  transform.rotation.y = glm::degrees(glm::yaw(quat));
-  transform.rotation.z = glm::degrees(glm::roll(quat));
+  // glm::quat quat(in_matrix);
+  // transform.rotation.x = glm::degrees(glm::pitch(quat));
+  // transform.rotation.y = glm::degrees(glm::yaw(quat));
+  // transform.rotation.z = glm::degrees(glm::roll(quat));
+  transform.rotation = matrix::DecomposeRotationFromMatrix(in_matrix);
 
   matrix = matrix * in_matrix;
   rot_matrix = in_matrix;
