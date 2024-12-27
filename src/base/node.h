@@ -45,7 +45,7 @@ struct Node {
 
   vec3f Translation() const { return transform.translation; }
 
-  vec3f Scale() const { return transform.scale; }
+  vec3f Scale() const { return transform.scale; }  
 
   const mat4f& ModelMatrix() { return matrix; }
 
@@ -72,6 +72,7 @@ struct Node {
   }
 
   void SetScale(const vec3f& scale);
+  void SetScale1D(float scale);
 
   vec3f GetLocation() { return transform.translation; }
   vec3f GetRotation() { return transform.rotation; }

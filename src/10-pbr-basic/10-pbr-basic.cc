@@ -83,10 +83,11 @@ void PbrBasicApp::InitScene() {
   // auto cube_mesh = MeshLoader::LoadMesh(tools::GetModelPath() + "teapot.gltf");
   // auto cube_mesh = MeshLoader::LoadMesh(tools::GetModelPath() + "Sponza\\glTF\\Sponza.gltf");
   auto cube_mesh = MeshLoader::LoadMesh(tools::GetModelPath() + "cornell.gltf");
+  assert(cube_mesh.Valid());
   // prepare resource
   scene.meshList = {
       // primitive::cube(),
-      *cube_mesh.get(),
+      *cube_mesh.MeshData,
   };
   scene.textureList = {
       {"../assets/texture.jpg"},
@@ -108,6 +109,9 @@ void PbrBasicApp::InitScene() {
       .metallic = 1.0,
       .textureList{0},
   };
+  // n1->SetRotationMatrix(matrix::MakeFromQuat(vec4f(0.7071068286895752, 0, 0, 0.7071068286895752)));
+  n1->SetTransform(cube_mesh.transform);
+  // n1->SetScale1D(0.025);
   scene.AddNode(n1);
 
   auto light = NewNode<DirectionalLight>(

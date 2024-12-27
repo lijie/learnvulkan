@@ -1,13 +1,20 @@
 #pragma once
 
-#include <string.h>
-#include <memory>
 #include "primitives.h"
 
 namespace lvk {
 
+struct LoadMeshResult {
+  PrimitiveMesh* MeshData{nullptr};
+  Transform transform;
+
+  bool Valid() {
+    return MeshData != nullptr;
+  }
+};
+
 class MeshLoader {
  public:
-  static std::unique_ptr<PrimitiveMesh> LoadMesh(const std::string& path);
+  static LoadMeshResult LoadMesh(const std::string& path);
 };
 }  // namespace lvk

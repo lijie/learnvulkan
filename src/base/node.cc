@@ -124,6 +124,11 @@ void Node::SetScale(const vec3f& scale) {
   UpdateModelMatrixScale();
 }
 
+void Node::SetScale1D(float scale) {
+  transform.scale = vec3f(scale, scale, scale);
+  UpdateModelMatrixScale();
+}
+
 void Node::SetRotationMatrix(const mat4f& in_matrix) {
   matrix = glm::translate(mat4f{1.0}, transform.translation * vec3f(1, 1, 1));
 

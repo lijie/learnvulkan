@@ -1,12 +1,20 @@
 #include "lvk_math.h"
 
+#include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include "glm/ext/matrix_float4x4.hpp"
 #include "glm/ext/quaternion_geometric.hpp"
 #include "glm/geometric.hpp"
+#include <glm/gtc/quaternion.hpp>
 
 namespace lvk {
 
 namespace matrix {
+
+mat4f MakeFromQuat(const vec4f& in_quat) {
+  glm::quat quat = glm::quat(in_quat.w, in_quat.x, in_quat.y, in_quat.z);
+  return glm::mat4_cast(quat);
+}
 
 mat4f MakeFromZ(const vec3f& z_axis_in) {
   vec3f z_axis = glm::normalize(z_axis_in);
@@ -28,7 +36,7 @@ mat4f MakeFromZ(const vec3f& z_axis_in) {
 
 mat4f MakeFromLookAt(const vec3f& start, const vec3f& target) { return MakeFromZ(target - start); }
 
-vec3f DecomposeRotationFromMatrix(const mat4f in_matrix) {
+vec3f DecomposeRotationFromMatrix(const mat4f& in_matrix) {
   const vec3f left = glm::normalize(vec3f(in_matrix[0]));     // Normalized left axis
   const vec3f up = glm::normalize(vec3f(in_matrix[1]));       // Normalized up axis
   const vec3f forward = glm::normalize(vec3f(in_matrix[2]));  // Normalized forward axis

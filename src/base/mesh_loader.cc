@@ -6,6 +6,7 @@
 #include <string_view>
 
 #include "lvk_log.h"
+#include "lvk_math.h"
 #include "primitives.h"
 
 
@@ -91,8 +92,9 @@ static void CopyToPrimitiveMeshAttribute(lvk::PrimitiveMesh* lvk_mesh, const tin
   }
 }
 
-static std::unique_ptr<PrimitiveMesh> LoadGltfMesh(const tinygltf::Model& model, const tinygltf::Mesh& mesh) {
-  auto result = std::make_unique<PrimitiveMesh>(GetMeshPrimitivSize(mesh));
+static LoadMeshResult LoadGltfMesh(const tinygltf::Model& model, const tinygltf::Mesh& mesh) {
+  LoadMeshResult result;
+  result.MeshData = new PrimitiveMesh(GetMeshPrimitivSize(mesh));
 
   for (size_t i = 0; i < model.bufferViews.size(); ++i) {
     const tinygltf::BufferView& bufferView = model.bufferViews[i];
@@ -116,8 +118,8 @@ static std::unique_ptr<PrimitiveMesh> LoadGltfMesh(const tinygltf::Model& model,
               << std::endl;
   }
 
-  CopyToPrimitiveMeshIndices(result.get(), model, mesh);
-  CopyToPrimitiveMeshAttribute(result.get(), model, mesh);
+  CopyToPrimitiveMeshIndices(result.MeshData, model, mesh);
+  CopyToPrimitiveMeshAttribute(result.MeshData, model, mesh);
 
   for (size_t i = 0; i < GetMeshPrimitivSize(mesh); ++i) {
     tinygltf::Primitive primitive = mesh.primitives[i];
@@ -181,8 +183,8 @@ static std::unique_ptr<PrimitiveMesh> LoadGltfMesh(const tinygltf::Model& model,
   return result;
 }
 
-static std::unique_ptr<PrimitiveMesh> LoadGltfSceneNode(const tinygltf::Model& model, const tinygltf::Node& node) {
-  std::unique_ptr<PrimitiveMesh> result;
+static LoadMeshResult LoadGltfSceneNode(const tinygltf::Model& model, const tinygltf::Node& node) {
+  LoadMeshResult result;
   if ((node.mesh >= 0) && (node.mesh < model.meshes.size())) {
     result = LoadGltfMesh(model, model.meshes[node.mesh]);
   }
@@ -192,17 +194,30 @@ static std::unique_ptr<PrimitiveMesh> LoadGltfSceneNode(const tinygltf::Model& m
     result = LoadGltfSceneNode(model, model.nodes[node.children[i]]);
 
     // TODO: only load one mesh? load multi mesh ?
-    if (result) {
+    if (result.Valid()) {
       break;
     }
+  }
+
+  if (node.translation.size() >= 3) {
+    result.transform.translation = vec3f(node.translation[0], node.translation[1], node.translation[2]);
+  }
+
+  if (node.scale.size() >= 3) {
+    result.transform.scale = vec3f(node.scale[0], node.scale[1], node.scale[2]);
+  }
+
+  if (node.rotation.size() >= 4) {
+    auto mat = matrix::MakeFromQuat(vec4f(node.rotation[0], node.rotation[1], node.rotation[2], node.rotation[3]));
+    result.transform.rotation = matrix::DecomposeRotationFromMatrix(mat);
   }
 
   return result;
 }
 
-static std::unique_ptr<PrimitiveMesh> LoadGltf(const std::string& path) {
+static LoadMeshResult LoadGltf(const std::string& path) {
   using namespace tinygltf;
-std::unique_ptr<PrimitiveMesh> result;
+  LoadMeshResult result;
 
   Model model;
   TinyGLTF loader;
@@ -223,26 +238,26 @@ std::unique_ptr<PrimitiveMesh> result;
 
   if (!ret) {
     printf("Failed to parse glTF\n");
-    return nullptr;
+    return result;
   }
 
   const tinygltf::Scene& scene = model.scenes[model.defaultScene];
   for (size_t i = 0; i < scene.nodes.size(); ++i) {
     assert((scene.nodes[i] >= 0) && (scene.nodes[i] < model.nodes.size()));
     result = LoadGltfSceneNode(model, model.nodes[scene.nodes[i]]);
-    if (result) {
+    if (result.Valid()) {
       return result;
     }
   }
-  return nullptr;
+  return result;
 }
 
 static bool IsGltfModel(const std::string_view path) { return true; }
 
-std::unique_ptr<PrimitiveMesh> MeshLoader::LoadMesh(const std::string& path) {
+LoadMeshResult MeshLoader::LoadMesh(const std::string& path) {
   if (!IsGltfModel(path)) {
     ERROR_LOG("invalid mesh type: {}", path);
-    return nullptr;
+    return LoadMeshResult();
   }
   return LoadGltf(path);
 }
