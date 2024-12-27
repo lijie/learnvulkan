@@ -22,11 +22,13 @@ class TwoCubesApp : public VulkanApp {
 
   void RotateN1(SNode n1, float delta_time);
   void RotateN2(SNode n1, float delta_time);
+  void ScaleN1(SNode n1, float delta_time);
 
   SNode n1;
   SNode n2;
 
   int n2_dir = 1;
+  int n1_scale_dir = 1;
 };
 
 void TwoCubesApp::InitScene() {
@@ -139,10 +141,21 @@ void TwoCubesApp::RotateN2(SNode n1, float delta_time) {
   // n1->SetRotationMatrix(glm::mat4_cast(quat));
 }
 
+void TwoCubesApp::ScaleN1(SNode n1, float delta_time) {
+  auto scale = n1->GetScale();
+  scale += delta_time * 10 * n1_scale_dir;
+  n1->SetScale(scale);
+
+  if (scale.x > 10.0 || scale.x < -10.0) {
+    n1_scale_dir *= -1;
+  }
+}
+
 void TwoCubesApp::Update(float delta_time) {
   VulkanApp::Update(delta_time);
   RotateN1(n1, delta_time);
   RotateN2(n2, delta_time);
+  ScaleN1(n1, delta_time);
 }
 
 }  // namespace lvk

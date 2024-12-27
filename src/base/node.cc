@@ -11,7 +11,9 @@
 
 namespace lvk {
 
-Node::Node() {}
+Node::Node() {
+  transform.scale = vec3f(1.0, 1.0, 1.0);
+}
 
 mat4f Node::localMatrix() {
 #if 1
@@ -21,8 +23,10 @@ mat4f Node::localMatrix() {
   // matrix = glm::rotate(matrix, glm::radians(transform.rotation.y), vec3f(0, 1, 0));
   // matrix = glm::rotate(matrix, glm::radians(transform.rotation.z), vec3f(0, 0, 1));
   matrix = glm::translate(mat4f{1.0}, transform.translation * vec3f(1, 1, 1));
-  auto rm = glm::eulerAngleYXZ(glm::radians(transform.rotation.y), glm::radians(transform.rotation.x), glm::radians(transform.rotation.z));
-  matrix = matrix * rm;
+  auto scale_mat = glm::scale(mat4f{1.0}, transform.scale);
+  rot_matrix = glm::eulerAngleYXZ(glm::radians(transform.rotation.y), glm::radians(transform.rotation.x), glm::radians(transform.rotation.z));
+  
+  matrix = matrix * rot_matrix * scale_mat;
   // glm::quat quat(vec3f(glm::radians(transform.rotation.x), glm::radians(transform.rotation.y), glm::radians(transform.rotation.z)));
   // matrix = matrix * glm::toMat4(quat);
 
@@ -92,7 +96,14 @@ mat4f Node::localMatrix() {
 
 void Node::UpdateModelMatrixTranslation() {
   matrix = glm::translate(mat4f{1.0}, transform.translation * vec3f(1, 1, 1));
-  matrix = matrix * rot_matrix;
+  auto scale_mat = glm::scale(mat4f{1.0}, transform.scale);
+  matrix = matrix * rot_matrix * scale_mat;
+}
+
+void Node::UpdateModelMatrixScale() {
+  matrix = glm::translate(mat4f{1.0}, transform.translation * vec3f(1, 1, 1));
+  auto scale_mat = glm::scale(mat4f{1.0}, transform.scale);
+  matrix = matrix * rot_matrix * scale_mat;
 }
 
 void Node::SetRotation(const vec3f& in) {
@@ -106,6 +117,11 @@ void Node::SetRotation(const vec3f& in) {
 void Node::SetLocation(const vec3f& in) {
   transform.translation = in;
   UpdateModelMatrixTranslation();
+}
+
+void Node::SetScale(const vec3f& scale) {
+  transform.scale = scale;
+  UpdateModelMatrixScale();
 }
 
 void Node::SetRotationMatrix(const mat4f& in_matrix) {

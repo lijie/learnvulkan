@@ -71,8 +71,11 @@ struct Node {
     localMatrix();
   }
 
+  void SetScale(const vec3f& scale);
+
   vec3f GetLocation() { return transform.translation; }
   vec3f GetRotation() { return transform.rotation; }
+  vec3f GetScale() { return transform.scale; }
 
   vec3f GetForwardVector() { return glm::normalize(vec3f(matrix[2][0], matrix[2][1], matrix[2][2])); }
   vec3f GetRightVector() {
@@ -84,6 +87,7 @@ struct Node {
  private:
   mat4f localMatrix();
   void UpdateModelMatrixTranslation();
+  void UpdateModelMatrixScale();
 
   // model matrix
   mat4f matrix{1.0};

@@ -38,7 +38,7 @@ void Camera::UpdateMatrix() {
   // vec3f location = vec3f(0, 0, -4);
   vec3f location = transform.translation;
   // SetLocationAndRotation(location, vec3f(0, 0, 0));
-  // DEBUG_LOG("camera matrix: {}", glm::to_string(localMatrix()));
+  // DEBUG_LOG("camera matrix: {}", GetLocalMatrixString());
   vec3f forward = GetForwardVector();
 
   camera_materix_.proj = glm::perspective(glm::radians(fov_), aspect_ratio_, near_, far_);
