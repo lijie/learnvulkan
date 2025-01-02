@@ -1,6 +1,4 @@
 #include <cstdlib>
-#include "glm/ext/matrix_transform.hpp"
-#include "glm/trigonometric.hpp"
 #define NOMINMAX
 #include "vulkan_app.h"
 
@@ -107,16 +105,16 @@ void DefaultCameraMoveInput::UpdateMouseLookMode(float delta_time) {
 
   if (a) {
     auto location = camera_->GetLocation();
-    auto angle = mouse_move_delta_.x * 0.0125f;
-    auto new_location = glm::rotate(location, angle, vec3f(0, 1, 0));
+    auto angle = mouse_move_delta_.x * 0.2;
+    auto new_location = matrix::RotateVector(location, angle, vec3f(0, 1, 0));
     camera_->SetLocation(new_location);
     auto rot_mat = matrix::MakeFromLookAt(new_location, vec3f(0.0f, 0.0f, 0.0f));
     camera_->SetRotationMatrix(rot_mat);
     mouse_move_delta_.x = 0;
   } else {
     auto location = camera_->GetLocation();
-    auto angle = mouse_move_delta_.y * 0.0125f;
-    auto new_location = glm::rotate(location, angle, vec3f(1, 0, 0));
+    auto angle = mouse_move_delta_.y * 0.2;
+    auto new_location = matrix::RotateVector(location, angle, vec3f(1, 0, 0));
     camera_->SetLocation(new_location);
     auto rot_mat = matrix::MakeFromLookAt(new_location, vec3f(0.0f, 0.0f, 0.0f));
     camera_->SetRotationMatrix(rot_mat);

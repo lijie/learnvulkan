@@ -25,6 +25,8 @@ class PbrBasicApp : public VulkanApp {
   void TestNode();
   virtual void InitScene() override;
   virtual void SetupUI(VulkanUI* ui) override;
+
+  int model_index = 0;
 };
 
 void PbrBasicApp::TestNode() {
@@ -82,7 +84,8 @@ void PbrBasicApp::InitScene() {
   // auto cube_mesh = MeshLoader::LoadMesh("..\\assets\\models\\teapot.gltf");
   // auto cube_mesh = MeshLoader::LoadMesh(tools::GetModelPath() + "teapot.gltf");
   // auto cube_mesh = MeshLoader::LoadMesh(tools::GetModelPath() + "Sponza\\glTF\\Sponza.gltf");
-  auto cube_mesh = MeshLoader::LoadMesh(tools::GetModelPath() + "cornell.gltf");
+  // auto cube_mesh = MeshLoader::LoadMesh(tools::GetModelPath() + "cornell.gltf");
+  auto cube_mesh = MeshLoader::LoadMesh(tools::GetModelPath() + "sphere.gltf");
   assert(cube_mesh.Valid());
   // prepare resource
   scene.meshList = {
@@ -115,15 +118,15 @@ void PbrBasicApp::InitScene() {
   scene.AddNode(n1);
 
   auto light = NewNode<DirectionalLight>(
-      Transform{.translation{0.0, 0.0, -6.0}, .rotation{0, 0, 0}, .scale{1.0, 1.0, 1.0}}, vec3f{1.0, 1.0, 1.0});
+      Transform{.translation{0.0, 10.0, 0.0}, .rotation{0, 0, 0}, .scale{1.0, 1.0, 1.0}}, vec3f{1.0, 1.0, 1.0});
   scene.AddNode(light);
 }
 
 void PbrBasicApp::SetupUI(VulkanUI *ui) {
   if (ui->header("Settings")) {
-    int index = 0;
     std::vector items = {std::string("aaa"), std::string("bbb")};
-    if (ui->comboBox("Material", &index, items)) {
+    if (ui->comboBox("Material", &model_index, items)) {
+      DEBUG_LOG("Matrial: {}", model_index);
     }
   }
 }
