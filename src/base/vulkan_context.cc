@@ -186,12 +186,13 @@ void VulkanContext::UpdateVertexUniformBuffers(Scene* scene) {
 
 void VulkanContext::UpdateFragmentUniformBuffers(Scene* scene) {
   // update model matrix
-  scene->ForEachNode([this](Node* n, int idx) {
-    auto& data = uniformBuffers_.fragment_data[idx];
-    data.color = vec4f(n->materialParamters.baseColor, 1.0);
-    data.metallic = n->materialParamters.metallic;
-    data.roughness = n->materialParamters.roughness;
-  });
+  for (size_t i = 0; i < vkNodeList.size(); i++) {
+    const auto& vkNode = vkNodeList[i];
+    auto& data = uniformBuffers_.fragment_data[i];
+    data.color = vec4f(vkNode.sceneNode->materialParamters.baseColor, 1.0);
+    data.metallic = vkNode.sceneNode->materialParamters.metallic;
+    data.roughness = vkNode.sceneNode->materialParamters.roughness;
+  }
 
   // update to gpu
   uniformBuffers_.fragment_ub.buffer.Update(reinterpret_cast<const uint8_t*>(uniformBuffers_.fragment_data),
