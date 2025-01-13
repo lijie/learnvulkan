@@ -1,6 +1,7 @@
 #include <glm/ext/matrix_float4x4.hpp>
 #include <glm/trigonometric.hpp>
 #include "base/lvk_math.h"
+#include "base/transform.h"
 #define NOMINMAX
 #include "base/vulkan_app.h"
 
@@ -106,7 +107,7 @@ void PbrBasicApp::InitScene() {
     // n1->SetRotationMatrix(matrix::MakeFromQuat(vec4f(0.7071068286895752, 0, 0, 0.7071068286895752)));
     n1->SetTransform(cube_mesh.nodes[index].transform);
     // n1->SetScale1D(0.025);
-    scene.AddNode(n1); 
+    scene.AddNode(n1);
   }
 
   // prepare resource

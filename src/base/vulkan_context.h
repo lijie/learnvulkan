@@ -42,6 +42,8 @@ struct VulkanNode {
   int pipelineHandle{0};
   // int descriptorSetHandle{0};
   VkDescriptorSet descriptorSet{VK_NULL_HANDLE};
+  // ref to logic Node in scene
+  Node *sceneNode{nullptr};
 };
 
 // 如果使用不同的 unitofrm 或者不同的 texture,

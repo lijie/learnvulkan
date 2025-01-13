@@ -90,6 +90,7 @@ void VulkanContext::CreateVulkanScene(Scene* scene, VulkanDevice* device) {
       VulkanNode& vknode = vkNodeList[index];
       PrimitiveMeshVK& vkmesh = vkMeshList[index];
       vknode.vkMesh = &vkMeshList[index];
+      vknode.sceneNode = node;
 
       index++;
 
@@ -128,7 +129,7 @@ void VulkanContext::CreateVulkanScene(Scene* scene, VulkanDevice* device) {
 
 // TODO: use global proj & view matrix
 void VulkanContext::PrepareUniformBuffers(Scene* scene, VulkanDevice* device) {
-  size_t bufferSize = scene->GetNodeCount() * sizeof(_UBOMesh);
+  size_t bufferSize = vkNodeList.size() * sizeof(_UBOMesh);
 
   VK_CHECK_RESULT(device->CreateBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
                                        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
@@ -136,7 +137,7 @@ void VulkanContext::PrepareUniformBuffers(Scene* scene, VulkanDevice* device) {
   uniformBuffers_.vertex_ub.buffer_size = bufferSize;
   uniformBuffers_.vertex_ub.alignment = sizeof(_UBOMesh);
 
-  size_t fragment_ub_size = scene->GetNodeCount() * sizeof(_UBOFragment);
+  size_t fragment_ub_size = vkNodeList.size() * sizeof(_UBOFragment);
   VK_CHECK_RESULT(device->CreateBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
                                        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
                                        &uniformBuffers_.fragment_ub.buffer, fragment_ub_size));
@@ -170,12 +171,13 @@ void VulkanContext::UpdateUniformBuffers(Scene* scene) {
 void VulkanContext::UpdateVertexUniformBuffers(Scene* scene) {
   const auto& camera_matrix = scene->GetCameraMatrix();
   // update model matrix
-  scene->ForEachNode([this, camera_matrix](Node* n, int idx) {
-    auto& ubo = uniformBuffers_.model[idx];
-    ubo.model = n->ModelMatrix();
+  for (size_t i = 0; i < vkNodeList.size(); i++) {
+    const auto& vkNode = vkNodeList[i];
+    auto& ubo = uniformBuffers_.model[i];
+    ubo.model = vkNode.sceneNode->ModelMatrix();
     ubo.projection = camera_matrix.proj;
     ubo.view = camera_matrix.view;
-  });
+  }
 
   // update to gpu
   uniformBuffers_.vertex_ub.buffer.Update(reinterpret_cast<const uint8_t*>(uniformBuffers_.model),
@@ -243,12 +245,12 @@ void VulkanContext::SetupDescriptorPool(VulkanDevice* device) {
   // Example uses one ubo and one image sampler
   std::vector<VkDescriptorPoolSize> pool_sizes = {
       initializers::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 4),
-      initializers::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 4),
+      initializers::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 16),
       initializers::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2)};
 
   // TODO: maxSets 怎么算的?
   VkDescriptorPoolCreateInfo descriptor_pool_create_info =
-      initializers::DescriptorPoolCreateInfo(static_cast<uint32_t>(pool_sizes.size()), pool_sizes.data(), 4);
+      initializers::DescriptorPoolCreateInfo(static_cast<uint32_t>(pool_sizes.size()), pool_sizes.data(), 16);
 
   VK_CHECK_RESULT(vkCreateDescriptorPool(device->device(), &descriptor_pool_create_info, nullptr, &descriptorPool_));
 }
@@ -649,6 +651,8 @@ VkDescriptorSet VulkanContext::AllocDescriptorSet(VulkanNode* vkNode) {
 }  // namespace lvk
 
 void VulkanContext::FindOrCreateDescriptorSet(VulkanNode* vkNode) {
+  vkNode->descriptorSet = AllocDescriptorSet(vkNode);
+  #if 0
   DescriptorSetKey key((void*)&uniformBuffers_, vkNode->vkTextureHandle);
   auto iter = descriptorSetCache_.find(key);
   if (iter == descriptorSetCache_.end()) {
@@ -656,6 +660,7 @@ void VulkanContext::FindOrCreateDescriptorSet(VulkanNode* vkNode) {
   } else {
     vkNode->descriptorSet = iter->second;
   }
+  #endif
 }
 
 int VulkanContext::FindOrCreatePipeline(const Node& node, const VulkanNode& vkNode) {
