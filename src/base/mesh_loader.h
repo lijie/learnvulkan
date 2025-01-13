@@ -4,12 +4,18 @@
 
 namespace lvk {
 
-struct LoadMeshResult {
+struct LoadMeshNode {
   PrimitiveMesh* MeshData{nullptr};
   Transform transform;
 
+  bool Valid() { return MeshData != nullptr; }
+};
+
+struct LoadMeshResult {
+  std::vector<LoadMeshNode> nodes;
+
   bool Valid() {
-    return MeshData != nullptr;
+    return nodes.size() > 0;
   }
 };
 

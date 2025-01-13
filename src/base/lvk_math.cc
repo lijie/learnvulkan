@@ -9,6 +9,15 @@
 #include "glm/geometric.hpp"
 #include "glm/trigonometric.hpp"
 
+// math notes
+// * 轴的顺序, 我们约定构成空间的V1, V2, V3三个轴分别是X, Y, Z.
+// * 手性, 右手: cross(X, Y) == Z, 左手: cross(X, Y) = -Z, 这里使用右手.
+// * 方向: 我们约定 Y == UP, X == LEFT, Z == FORWARD
+// * 旋转的方向: 我们规定按轴的顺序旋转即为旋转的正方向, 比如围绕Z轴, X->Y方向旋转, 即旋转XY平面为正方向, 旋转YX平面为反方向.
+// * 绕Y轴旋转: 根据右手定则, cross(Z, X) == Y, 所以绕Y轴时, Z->X方向为正方形, 由此推导出来的旋转矩阵, 跟其它2个轴, +-符号不同.
+// * 欧拉角的应用顺序: 我们使用 Yaw-Pitch-Roll 的顺序应用欧拉角, 即构造这样的旋转矩阵: R(roll) * R(pitch) * R(yaw)
+// * Model矩阵的构造: 我们按照 Scale->Rotate->Translate 的顺序构造Model矩阵
+
 namespace lvk {
 
 namespace matrix {
@@ -96,13 +105,80 @@ mat4f MakeFromZ(const vec3f& z_axis_in) {
 }
 
 mat4f MakeFromEulerAngleYXZ(const float& yaw, const float& pitch, const float& roll) {
-#if 1
+#if 0
     // rotate 3 times
     mat4f rot{1};
     rot = Rotate(rot, yaw, vec3f(0, 1, 0));
     rot = Rotate(rot, pitch, vec3f(1, 0, 0));
     rot = Rotate(rot, roll, vec3f(0, 0, 1));
     return rot;
+#endif
+
+#if 1
+    // 教科书一般的3个选择矩阵
+    mat3f ry{1};
+    float SinY = sin(yaw);
+    float CosY = cos(yaw);
+    ry[0][0] = CosY;
+    ry[0][1] = 0;
+    ry[0][2] = -SinY;
+    ry[1][0] = 0;
+    ry[1][1] = 1;
+    ry[1][2] = 0;
+    ry[2][0] = SinY;
+    ry[2][1] = 0;
+    ry[2][2] = CosY;
+
+
+    mat3f rx{1};
+    float SinX = sin(pitch);
+    float CosX = cos(pitch);
+    rx[0][0] = 1;
+    rx[0][1] = 0;
+    rx[0][2] = 0;
+    rx[1][0] = 0;
+    rx[1][1] = CosX;
+    rx[1][2] = SinX;
+    rx[2][0] = 0;
+    rx[2][1] = -SinX;
+    rx[2][2] = CosX;
+
+    mat3f rz{1};
+    float SinZ = sin(roll);
+    float CosZ = cos(roll);
+    rz[0][0] = CosZ;
+    rz[0][1] = SinZ;
+    rz[0][2] = 0;
+    rz[1][0] = -SinZ;
+    rz[1][1] = CosZ;
+    rz[1][2] = 0;
+    rz[2][0] = 0;
+    rz[2][1] = 0;
+    rz[2][2] = 1;
+
+    mat4f result = mat4f(ry * rx * rz);
+    result[3] = vec4f(0, 0, 0, 1);
+    return result;
+#endif
+
+#if 0
+    float SinY = sin(yaw);
+    float CosY = cos(yaw);
+    float SinX = sin(pitch);
+    float CosX = cos(pitch);
+    float SinZ = sin(roll);
+    float CosZ = cos(roll);
+
+    mat4f rot{1};
+    rot[0][0] = CosX * CosZ;
+    rot[0][1] = 0;
+    rot[0][2] = 0;
+    rot[1][0] = 0;
+    rot[1][1] = 0;
+    rot[1][2] = 0;
+    rot[2][0] = 0;
+    rot[2][1] = 0;
+    rot[2][2] = 0;
 #endif
 }
 
@@ -144,6 +220,27 @@ void DecomposeMatrix(const mat4f in_matrix, vec3f& out_translate, vec3f& out_sca
   out_rot = DecomposeRotationFromMatrix(in_matrix);
 }
 
+mat4f ProjectionMatrix(float fov, float aspec, float near, float far) {
+  return mat4f{0};
+}
+
+#if 0
+template<typename T>
+	GLM_FUNC_QUALIFIER mat<4, 4, T, defaultp> perspectiveRH_ZO(T fovy, T aspect, T zNear, T zFar)
+	{
+		assert(abs(aspect - std::numeric_limits<T>::epsilon()) > static_cast<T>(0));
+
+		T const tanHalfFovy = tan(fovy / static_cast<T>(2));
+
+		mat<4, 4, T, defaultp> Result(static_cast<T>(0));
+		Result[0][0] = static_cast<T>(1) / (aspect * tanHalfFovy);
+		Result[1][1] = static_cast<T>(1) / (tanHalfFovy);
+		Result[2][2] = zFar / (zNear - zFar);
+		Result[2][3] = - static_cast<T>(1);
+		Result[3][2] = -(zFar * zNear) / (zFar - zNear);
+		return Result;
+	}
+#endif
 }  // namespace matrix
 
 }  // namespace lvk

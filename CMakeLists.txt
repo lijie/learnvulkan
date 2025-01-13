@@ -7,6 +7,9 @@ set(GLSLC ${Vulkan_INCLUDE_DIR}/../Bin/glslc.exe)
 
 include_directories(${CMAKE_SOURCE_DIR}/src)
 
+# renderdoc path
+include_directories("C:\\Program Files\\RenderDoc")
+
 # set ( CMAKE_VERBOSE_MAKEFILE true )
 
 # for w32

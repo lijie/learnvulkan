@@ -27,7 +27,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL DebugUtilsMessengerCallback(VkDebugUtilsMessageSe
 
   // Display message to default output (console/logcat)
   std::stringstream debugMessage;
-  debugMessage << prefix << "[" << pCallbackData->messageIdNumber << "][" << pCallbackData->pMessageIdName
+  debugMessage << prefix << "[" << pCallbackData->messageIdNumber << "][" << (pCallbackData->pMessageIdName ? pCallbackData->pMessageIdName : "")
                << "] : " << pCallbackData->pMessage;
 
 #if defined(__ANDROID__)

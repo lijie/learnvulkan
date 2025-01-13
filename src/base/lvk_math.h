@@ -29,6 +29,7 @@ namespace matrix {
 
 mat4f Scale(const mat4f& m, const vec3f& v);
 mat4f Translate(const mat4f& m, const vec3f& v);
+// 构造围绕任意axis-v, 旋转agnle的旋转矩阵rot, 并返回 mat*rot
 mat4f Rotate(const mat4f& m, float angle, const vec3f& v);
 
 vec3f RotateVector(const vec3f& v, float angle, const vec3f& axis);

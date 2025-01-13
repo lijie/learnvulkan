@@ -17,6 +17,7 @@
 #include "vulkan_swapchain.h"
 #include "vulkan_ui.h"
 
+#define ENABLE_RENDERDOC 1
 
 namespace lvk {
 class VulkanDevice;
@@ -128,6 +129,9 @@ class VulkanApp {
   VulkanUIRenderWrapper *ui_render_wrapper_{nullptr};
   DefaultCameraMoveInput *camera_move_input_{nullptr};
 
+  // enable renderdoc intergration
+  bool enable_renderdoc{false};
+
   void InitSwapchain();
   void SetupSwapchain();
   void CreateCommandPool();
@@ -155,6 +159,9 @@ class VulkanApp {
 
   private:
     VulkanUI ui_;
+#ifdef ENABLE_RENDERDOC
+    void *rdoc_api_{nullptr};
+#endif
 
  public:
   static std::vector<const char *> args;
@@ -168,6 +175,9 @@ class VulkanApp {
   virtual void Update(float delta_time);
 
   virtual void SetupUI(VulkanUI *ui) {};
+
+  void StartRenderdoc();
+  void EndRenderdoc();
 
   virtual ~VulkanApp() {}
 };

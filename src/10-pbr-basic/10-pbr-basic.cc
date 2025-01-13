@@ -85,13 +85,35 @@ void PbrBasicApp::InitScene() {
   // auto cube_mesh = MeshLoader::LoadMesh(tools::GetModelPath() + "teapot.gltf");
   // auto cube_mesh = MeshLoader::LoadMesh(tools::GetModelPath() + "Sponza\\glTF\\Sponza.gltf");
   // auto cube_mesh = MeshLoader::LoadMesh(tools::GetModelPath() + "cornell.gltf");
-  auto cube_mesh = MeshLoader::LoadMesh(tools::GetModelPath() + "sphere.gltf");
+  // auto cube_mesh = MeshLoader::LoadMesh(tools::GetModelPath() + "sphere.gltf");
+  auto cube_mesh = MeshLoader::LoadMesh(tools::GetModelPath() + "vulkanscene_shadow.gltf");
+  
   assert(cube_mesh.Valid());
+
+  for (const auto& load_node : cube_mesh.nodes) {
+    scene.meshList.push_back(*load_node.MeshData);
+
+    size_t index = scene.meshList.size() - 1;
+    auto n1 = NewNode<Node>();
+    n1->mesh = index;
+    n1->material = 0;
+    n1->materialParamters = {
+        .baseColor{1.0f, 0.765557f, 0.336057f},  // gold
+        .roughness = 0.5f,
+        .metallic = 1.0,
+        .textureList{0},
+    };
+    // n1->SetRotationMatrix(matrix::MakeFromQuat(vec4f(0.7071068286895752, 0, 0, 0.7071068286895752)));
+    n1->SetTransform(cube_mesh.nodes[index].transform);
+    // n1->SetScale1D(0.025);
+    scene.AddNode(n1); 
+  }
+
   // prepare resource
-  scene.meshList = {
-      // primitive::cube(),
-      *cube_mesh.MeshData,
-  };
+  // scene.meshList = {
+  //     // primitive::cube(),
+  //     *(cube_mesh.nodes[0].MeshData),
+  // };
   scene.textureList = {
       {"../assets/texture.jpg"},
       {"../assets/mutou.png"},
@@ -103,19 +125,6 @@ void PbrBasicApp::InitScene() {
       },
   };
 
-  auto n1 = NewNode<Node>();
-  n1->mesh = 0;
-  n1->material = 0;
-  n1->materialParamters = {
-      .baseColor{1.0f, 0.765557f, 0.336057f},  // gold
-      .roughness = 0.5f,
-      .metallic = 1.0,
-      .textureList{0},
-  };
-  // n1->SetRotationMatrix(matrix::MakeFromQuat(vec4f(0.7071068286895752, 0, 0, 0.7071068286895752)));
-  n1->SetTransform(cube_mesh.transform);
-  // n1->SetScale1D(0.025);
-  scene.AddNode(n1);
 
   auto light = NewNode<DirectionalLight>(
       Transform{.translation{0.0, 10.0, 0.0}, .rotation{0, 0, 0}, .scale{1.0, 1.0, 1.0}}, vec3f{1.0, 1.0, 1.0});
@@ -142,9 +151,13 @@ int main() {
     VulkanApp::args.push_back(__argv[i]);
   };
   vulkanApp = new PbrBasicApp();
+  vulkanApp->StartRenderdoc();
   vulkanApp->InitVulkan();
   vulkanApp->Prepare();
   vulkanApp->RenderLoop();
+  vulkanApp->EndRenderdoc();
   delete (vulkanApp);
+
+  
   return 0;
 }

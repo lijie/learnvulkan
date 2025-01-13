@@ -1,14 +1,16 @@
 #include <cstdlib>
 #define NOMINMAX
-#include "vulkan_app.h"
-
+#include <glm/gtx/rotate_vector.hpp>
+#include <glm/gtx/vector_angle.hpp>
 #include <iostream>
 #include <ratio>
 #include <vector>
 
 #include "imgui.h"
 #include "input.h"
+#include "lvk_log.h"
 #include "lvk_math.h"
+#include "vulkan_app.h"
 #include "vulkan_context.h"
 #include "vulkan_debug.h"
 #include "vulkan_device.h"
@@ -17,11 +19,11 @@
 #include "vulkan_ui.h"
 #include "window.h"
 
-#include "lvk_math.h"
-#include "lvk_log.h"
 
-#include <glm/gtx/rotate_vector.hpp>
-#include <glm/gtx/vector_angle.hpp>
+// for renderdoc
+#ifdef ENABLE_RENDERDOC
+#include "renderdoc_app.h"
+#endif
 
 namespace lvk {
 std::vector<const char *> VulkanApp::args;
@@ -388,64 +390,96 @@ void VulkanApp::Update(float delta_time) {
   }
 }
 
-void VulkanApp::UpdateOverlay(Scene* scene) {
-	// if (!settings.overlay)
-	// 	return;
+void VulkanApp::UpdateOverlay(Scene *scene) {
+  // if (!settings.overlay)
+  // 	return;
 
-	// The overlay does not need to be updated with each frame, so we limit the update rate
-	// Not only does this save performance but it also makes display of fast changig values like fps more stable
-	// ui.updateTimer -= frameTimer;
-	// if (ui.updateTimer >= 0.0f) {
-	// 	return;
-	// }
-	// Update at max. rate of 30 fps
-	ui_.updateTimer = 1.0f / 30.0f;
+  // The overlay does not need to be updated with each frame, so we limit the update rate
+  // Not only does this save performance but it also makes display of fast changig values like fps more stable
+  // ui.updateTimer -= frameTimer;
+  // if (ui.updateTimer >= 0.0f) {
+  // 	return;
+  // }
+  // Update at max. rate of 30 fps
+  ui_.updateTimer = 1.0f / 30.0f;
 
-	ImGuiIO& io = ImGui::GetIO();
+  ImGuiIO &io = ImGui::GetIO();
 
-	io.DisplaySize = ImVec2((float)width, (float)height);
-	io.DeltaTime = 1.0f / 30.0f; //frameTimer;
+  io.DisplaySize = ImVec2((float)width, (float)height);
+  io.DeltaTime = 1.0f / 30.0f;  // frameTimer;
 
-	io.MousePos = ImVec2(input_system_.GetMousePosition().x, input_system_.GetMousePosition().y);
-	io.MouseDown[0] = input_system_.GetMouseState(0);
-	io.MouseDown[1] = input_system_.GetMouseState(1);
-	io.MouseDown[2] = input_system_.GetMouseState(2);
+  io.MousePos = ImVec2(input_system_.GetMousePosition().x, input_system_.GetMousePosition().y);
+  io.MouseDown[0] = input_system_.GetMouseState(0);
+  io.MouseDown[1] = input_system_.GetMouseState(1);
+  io.MouseDown[2] = input_system_.GetMouseState(2);
 
-	ImGui::NewFrame();
+  ImGui::NewFrame();
 
-	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0);
-	ImGui::SetNextWindowPos(ImVec2(10 * ui_.scale, 10 * ui_.scale));
-	ImGui::SetNextWindowSize(ImVec2(0, 0), ImGuiCond_FirstUseEver);
-	ImGui::Begin("Vulkan Example", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
-	ImGui::TextUnformatted("Title Here!");
-	ImGui::TextUnformatted("deviceProperties.deviceName");
-	ImGui::Text("%.2f ms/frame (%.1d fps)", (1000.0f / 60), 60);
+  ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0);
+  ImGui::SetNextWindowPos(ImVec2(10 * ui_.scale, 10 * ui_.scale));
+  ImGui::SetNextWindowSize(ImVec2(0, 0), ImGuiCond_FirstUseEver);
+  ImGui::Begin("Vulkan Example", nullptr,
+               ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
+  ImGui::TextUnformatted("Title Here!");
+  ImGui::TextUnformatted("deviceProperties.deviceName");
+  ImGui::Text("%.2f ms/frame (%.1d fps)", (1000.0f / 60), 60);
 
 #if defined(VK_USE_PLATFORM_ANDROID_KHR)
-	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 5.0f * ui.scale));
+  ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 5.0f * ui.scale));
 #endif
-	ImGui::PushItemWidth(110.0f * ui_.scale);
-	
+  ImGui::PushItemWidth(110.0f * ui_.scale);
+
   SetupUI(&ui_);
 
-	ImGui::PopItemWidth();
+  ImGui::PopItemWidth();
 #if defined(VK_USE_PLATFORM_ANDROID_KHR)
-	ImGui::PopStyleVar();
+  ImGui::PopStyleVar();
 #endif
 
-	ImGui::End();
-	ImGui::PopStyleVar();
-	ImGui::Render();
+  ImGui::End();
+  ImGui::PopStyleVar();
+  ImGui::Render();
 
-	if (ui_.Update() || ui_.updated) {
-		context_->BuildCommandBuffers(scene);
-		ui_.updated = false;
-	}
+  if (ui_.Update() || ui_.updated) {
+    context_->BuildCommandBuffers(scene);
+    ui_.updated = false;
+  }
 
 #if defined(VK_USE_PLATFORM_ANDROID_KHR)
-	if (mouseState.buttons.left) {
-		mouseState.buttons.left = false;
-	}
+  if (mouseState.buttons.left) {
+    mouseState.buttons.left = false;
+  }
+#endif
+}
+
+void VulkanApp::StartRenderdoc() {
+#ifdef ENABLE_RENDERDOC
+  RENDERDOC_API_1_1_2 *rdoc_api = NULL;
+
+  // At init, on windows
+  if (HMODULE mod = LoadLibrary("C:\\Program Files\\RenderDoc\\renderdoc.dll")) {
+    pRENDERDOC_GetAPI RENDERDOC_GetAPI = (pRENDERDOC_GetAPI)GetProcAddress(mod, "RENDERDOC_GetAPI");
+    int ret = RENDERDOC_GetAPI(eRENDERDOC_API_Version_1_1_2, (void **)&rdoc_api);
+    assert(ret == 1);
+  }
+
+  // To start a frame capture, call StartFrameCapture.
+  // You can specify NULL, NULL for the device to capture on if you have only one device and
+  // either no windows at all or only one window, and it will capture from that device.
+  // See the documentation below for a longer explanation
+  if (rdoc_api) {
+    rdoc_api->StartFrameCapture(NULL, NULL);
+    rdoc_api_ = rdoc_api;
+  }
+#endif
+}
+
+void VulkanApp::EndRenderdoc() {
+  // stop the capture
+#ifdef ENABLE_RENDERDOC
+if (rdoc_api_) {
+  ((RENDERDOC_API_1_1_2 *)rdoc_api_)->EndFrameCapture(NULL, NULL);
+}
 #endif
 }
 

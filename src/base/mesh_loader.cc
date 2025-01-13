@@ -92,8 +92,8 @@ static void CopyToPrimitiveMeshAttribute(lvk::PrimitiveMesh* lvk_mesh, const tin
   }
 }
 
-static LoadMeshResult LoadGltfMesh(const tinygltf::Model& model, const tinygltf::Mesh& mesh) {
-  LoadMeshResult result;
+static LoadMeshNode LoadGltfMesh(const tinygltf::Model& model, const tinygltf::Mesh& mesh) {
+  LoadMeshNode result;
   result.MeshData = new PrimitiveMesh(GetMeshPrimitivSize(mesh));
 
   for (size_t i = 0; i < model.bufferViews.size(); ++i) {
@@ -183,36 +183,36 @@ static LoadMeshResult LoadGltfMesh(const tinygltf::Model& model, const tinygltf:
   return result;
 }
 
-static LoadMeshResult LoadGltfSceneNode(const tinygltf::Model& model, const tinygltf::Node& node) {
-  LoadMeshResult result;
+static LoadMeshNode LoadGltfSceneNode(const tinygltf::Model& model, const tinygltf::Node& node) {
+  LoadMeshNode load_node;
   if ((node.mesh >= 0) && (node.mesh < model.meshes.size())) {
-    result = LoadGltfMesh(model, model.meshes[node.mesh]);
+    load_node = LoadGltfMesh(model, model.meshes[node.mesh]);
   }
 
   for (size_t i = 0; i < node.children.size(); i++) {
     assert((node.children[i] >= 0) && (node.children[i] < model.nodes.size()));
-    result = LoadGltfSceneNode(model, model.nodes[node.children[i]]);
+    load_node = LoadGltfSceneNode(model, model.nodes[node.children[i]]);
 
     // TODO: only load one mesh? load multi mesh ?
-    if (result.Valid()) {
+    if (load_node.Valid()) {
       break;
     }
   }
 
   if (node.translation.size() >= 3) {
-    result.transform.translation = vec3f(node.translation[0], node.translation[1], node.translation[2]);
+    load_node.transform.translation = vec3f(node.translation[0], node.translation[1], node.translation[2]);
   }
 
   if (node.scale.size() >= 3) {
-    result.transform.scale = vec3f(node.scale[0], node.scale[1], node.scale[2]);
+    load_node.transform.scale = vec3f(node.scale[0], node.scale[1], node.scale[2]);
   }
 
   if (node.rotation.size() >= 4) {
     auto mat = matrix::MakeFromQuat(vec4f(node.rotation[0], node.rotation[1], node.rotation[2], node.rotation[3]));
-    result.transform.rotation = matrix::DecomposeRotationFromMatrix(mat);
+    load_node.transform.rotation = matrix::DecomposeRotationFromMatrix(mat);
   }
 
-  return result;
+  return load_node;
 }
 
 static LoadMeshResult LoadGltf(const std::string& path) {
@@ -244,9 +244,9 @@ static LoadMeshResult LoadGltf(const std::string& path) {
   const tinygltf::Scene& scene = model.scenes[model.defaultScene];
   for (size_t i = 0; i < scene.nodes.size(); ++i) {
     assert((scene.nodes[i] >= 0) && (scene.nodes[i] < model.nodes.size()));
-    result = LoadGltfSceneNode(model, model.nodes[scene.nodes[i]]);
-    if (result.Valid()) {
-      return result;
+    auto load_node = LoadGltfSceneNode(model, model.nodes[scene.nodes[i]]);
+    if (load_node.Valid()) {
+      result.nodes.push_back(load_node);
     }
   }
   return result;
