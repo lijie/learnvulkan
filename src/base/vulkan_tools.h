@@ -63,5 +63,8 @@ void SetImageLayout(
 	VkImageLayout newImageLayout,
 	VkPipelineStageFlags srcStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
 	VkPipelineStageFlags dstStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+
+// Returns if a given format support LINEAR filtering
+VkBool32 FormatIsFilterable(VkPhysicalDevice physicalDevice, VkFormat format, VkImageTiling tiling);
 }  // namespace tools
 }  // namespace lvk

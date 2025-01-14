@@ -392,6 +392,12 @@ inline VkImageViewCreateInfo ImageViewCreateInfo() {
   return imageViewCreateInfo;
 }
 
+inline VkFramebufferCreateInfo FramebufferCreateInfo() {
+	VkFramebufferCreateInfo framebufferCreateInfo {};
+	framebufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+	return framebufferCreateInfo;
+}
+
 /** @brief Initialize an image memory barrier with no image transfer ownership
  */
 inline VkImageMemoryBarrier ImageMemoryBarrier() {

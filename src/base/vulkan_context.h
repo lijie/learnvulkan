@@ -21,6 +21,11 @@ class Material;
 class Window;
 class VulkanContext;
 
+enum class PipelineType {
+  Shadow,
+  General,
+};
+
 // 用于在渲染流程中插入自定义渲染逻辑
 class RenderComponent {
   public:
@@ -94,6 +99,7 @@ class VulkanContext {
   void SetupDescriptorSetLayout(VulkanDevice *device);
   VkDescriptorSet AllocDescriptorSet(VulkanNode *vkNode);
   void SetupRenderPass();
+  void SetupShadowRenderPass();
   void CreatePipelineCache();
   void BuildPipelines();
 
@@ -103,6 +109,7 @@ class VulkanContext {
   void CreateSynchronizationPrimitives();
 
   void SetupFrameBuffer();
+  void SetupShadowFrameBuffer();
   void SetupDepthStencil();
 
   void InitSwapchain();
@@ -176,7 +183,7 @@ class VulkanContext {
   std::vector<const char *> enabledDeviceExtensions;
   std::vector<const char *> enabledInstanceExtensions;
 
-  struct {
+  struct FrameBufferAttachment {
     VkImage image;
     VkDeviceMemory mem;
     VkImageView view;
@@ -254,6 +261,16 @@ class VulkanContext {
   std::unordered_map<DescriptorSetKey, VkDescriptorSet, DescriptorSetKey::HashFunction> descriptorSetCache_;
 
   std::vector<RenderComponent*> rc_array_;
+
+  struct ShadowPassInfo {
+	  int32_t width, height;
+	  VkFramebuffer frameBuffer;
+	  FrameBufferAttachment depth;
+	  VkRenderPass renderPass;
+	  VkSampler depthSampler;
+	  VkDescriptorImageInfo descriptor;
+    VkFormat depthFormat{VK_FORMAT_D16_UNORM};
+  } shadowPassInfo_{};
 
   VkResult CreateInstance(bool enableValidation);
   VkPipelineShaderStageCreateInfo LoadShader(std::string fileName, VkShaderStageFlagBits stage, VulkanDevice *device);

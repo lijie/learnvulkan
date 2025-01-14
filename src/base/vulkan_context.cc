@@ -532,6 +532,56 @@ void VulkanContext::SetupRenderPass() {
   VK_CHECK_RESULT(vkCreateRenderPass(device_->device(), &renderPassInfo, nullptr, &renderPass_));
 }
 
+void VulkanContext::SetupShadowRenderPass() {
+  VkAttachmentDescription attachmentDescription{};
+  attachmentDescription.format = shadowPassInfo_.depthFormat;
+  attachmentDescription.samples = VK_SAMPLE_COUNT_1_BIT;
+  attachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;							// Clear depth at beginning of the render pass
+  attachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_STORE;						// We will read from depth, so it's important to store the depth attachment results
+  attachmentDescription.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+  attachmentDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+  attachmentDescription.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;					// We don't care about initial layout of the attachment
+  attachmentDescription.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;// Attachment will be transitioned to shader read at render pass end
+
+  VkAttachmentReference depthReference = {};
+  depthReference.attachment = 0;
+  depthReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;			// Attachment will be used as depth/stencil during render pass
+
+  VkSubpassDescription subpass = {};
+  subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+  subpass.colorAttachmentCount = 0;                   // No color attachments
+  subpass.pDepthStencilAttachment = &depthReference;  // Reference to our depth attachment
+
+  // Use subpass dependencies for layout transitions
+  std::array<VkSubpassDependency, 2> dependencies;
+
+  dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
+  dependencies[0].dstSubpass = 0;
+  dependencies[0].srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+  dependencies[0].dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+  dependencies[0].srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+  dependencies[0].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+  dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+  dependencies[1].srcSubpass = 0;
+  dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
+  dependencies[1].srcStageMask = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+  dependencies[1].dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+  dependencies[1].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+  dependencies[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+  dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+  VkRenderPassCreateInfo renderPassCreateInfo = initializers::RenderPassCreateInfo();
+  renderPassCreateInfo.attachmentCount = 1;
+  renderPassCreateInfo.pAttachments = &attachmentDescription;
+  renderPassCreateInfo.subpassCount = 1;
+  renderPassCreateInfo.pSubpasses = &subpass;
+  renderPassCreateInfo.dependencyCount = static_cast<uint32_t>(dependencies.size());
+  renderPassCreateInfo.pDependencies = dependencies.data();
+
+  VK_CHECK_RESULT(vkCreateRenderPass(device_->device(), &renderPassCreateInfo, nullptr, &shadowPassInfo_.renderPass));
+}
+
 void VulkanContext::CreatePipelineCache() {
   VkPipelineCacheCreateInfo pipelineCacheCreateInfo = {};
   pipelineCacheCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
@@ -563,6 +613,24 @@ void VulkanContext::BuildPipelines() {
   CreatePipelineCache();
   // todo
   pipelineList.resize(static_cast<std::size_t>(NodeType::MAX));
+
+#if 0
+  // for shadowmap
+  VulkanPipelineBuilder()
+      .dynamicStates({VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR})
+      .primitiveTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
+      .polygonMode(VK_POLYGON_MODE_FILL)
+      .vertexInputState(BuildVertexInputState())
+      .cullMode(VK_CULL_MODE_NONE)
+      .frontFace(VK_FRONT_FACE_COUNTER_CLOCKWISE)
+      .colorBlendAttachmentStates(colorBlendAttachmentStates)
+      .depthWriteEnable(true)
+      .depthCompareOp(VK_COMPARE_OP_LESS_OR_EQUAL)
+      .rasterizationSamples(VK_SAMPLE_COUNT_1_BIT)
+      .shaderStages(GetVkNode(0)->shaderStages)
+      .build(device_->device(), pipelineCache_, PipelineLayout(), renderPass_,
+             &pipelineList[static_cast<std::size_t>(NodeType::Object)], "shadowmap");
+#endif
 
   std::vector<VkPipelineColorBlendAttachmentState> colorBlendAttachmentStates;
   colorBlendAttachmentStates.push_back(initializers::PipelineColorBlendAttachmentState(0xf, VK_FALSE));
@@ -736,6 +804,73 @@ void VulkanContext::SetupFrameBuffer() {
     attachments[0] = swapChain_.buffers_[i].view;
     VK_CHECK_RESULT(vkCreateFramebuffer(device_->device(), &frameBufferCreateInfo, nullptr, &frameBuffers_[i]));
   }
+}
+
+void VulkanContext::SetupShadowFrameBuffer() {
+  // For shadow mapping we only need a depth attachment
+  VkImageCreateInfo image = initializers::ImageCreateInfo();
+  image.imageType = VK_IMAGE_TYPE_2D;
+  image.extent.width = shadowPassInfo_.width;
+  image.extent.height = shadowPassInfo_.height;
+  image.extent.depth = 1;
+  image.mipLevels = 1;
+  image.arrayLayers = 1;
+  image.samples = VK_SAMPLE_COUNT_1_BIT;
+  image.tiling = VK_IMAGE_TILING_OPTIMAL;
+  image.format = shadowPassInfo_.depthFormat;  // Depth stencil attachment
+  image.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
+                VK_IMAGE_USAGE_SAMPLED_BIT;  // We will sample directly from the depth attachment for the shadow mapping
+  VK_CHECK_RESULT(vkCreateImage(device_->device(), &image, nullptr, &shadowPassInfo_.depth.image));
+
+  VkMemoryAllocateInfo memAlloc = initializers::MemoryAllocateInfo();
+  VkMemoryRequirements memReqs;
+  vkGetImageMemoryRequirements(device_->device(), shadowPassInfo_.depth.image, &memReqs);
+  memAlloc.allocationSize = memReqs.size;
+  memAlloc.memoryTypeIndex = device_->GetMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+  VK_CHECK_RESULT(vkAllocateMemory(device_->device(), &memAlloc, nullptr, &shadowPassInfo_.depth.mem));
+  VK_CHECK_RESULT(vkBindImageMemory(device_->device(), shadowPassInfo_.depth.image, shadowPassInfo_.depth.mem, 0));
+
+  VkImageViewCreateInfo depthStencilView = initializers::ImageViewCreateInfo();
+  depthStencilView.viewType = VK_IMAGE_VIEW_TYPE_2D;
+  depthStencilView.format = shadowPassInfo_.depthFormat;
+  depthStencilView.subresourceRange = {};
+  depthStencilView.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+  depthStencilView.subresourceRange.baseMipLevel = 0;
+  depthStencilView.subresourceRange.levelCount = 1;
+  depthStencilView.subresourceRange.baseArrayLayer = 0;
+  depthStencilView.subresourceRange.layerCount = 1;
+  depthStencilView.image = shadowPassInfo_.depth.image;
+  VK_CHECK_RESULT(vkCreateImageView(device_->device(), &depthStencilView, nullptr, &shadowPassInfo_.depth.view));
+
+  // Create sampler to sample from to depth attachment
+  // Used to sample in the fragment shader for shadowed rendering
+  VkFilter shadowmap_filter =
+      tools::FormatIsFilterable(device_->physicalDevice(), shadowPassInfo_.depthFormat, VK_IMAGE_TILING_OPTIMAL)
+          ? VK_FILTER_LINEAR
+          : VK_FILTER_NEAREST;
+  VkSamplerCreateInfo sampler = initializers::SamplerCreateInfo();
+  sampler.magFilter = shadowmap_filter;
+  sampler.minFilter = shadowmap_filter;
+  sampler.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+  sampler.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+  sampler.addressModeV = sampler.addressModeU;
+  sampler.addressModeW = sampler.addressModeU;
+  sampler.mipLodBias = 0.0f;
+  sampler.maxAnisotropy = 1.0f;
+  sampler.minLod = 0.0f;
+  sampler.maxLod = 1.0f;
+  sampler.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+  VK_CHECK_RESULT(vkCreateSampler(device_->device(), &sampler, nullptr, &shadowPassInfo_.depthSampler));
+
+  // Create frame buffer
+  VkFramebufferCreateInfo fbufCreateInfo = initializers::FramebufferCreateInfo();
+  fbufCreateInfo.renderPass = shadowPassInfo_.renderPass;
+  fbufCreateInfo.attachmentCount = 1;
+  fbufCreateInfo.pAttachments = &shadowPassInfo_.depth.view;
+  fbufCreateInfo.width = shadowPassInfo_.width;
+  fbufCreateInfo.height = shadowPassInfo_.height;
+  fbufCreateInfo.layers = 1;
+  VK_CHECK_RESULT(vkCreateFramebuffer(device_->device(), &fbufCreateInfo, nullptr, &shadowPassInfo_.frameBuffer));
 }
 
 void VulkanContext::CreateCommandPool() {
