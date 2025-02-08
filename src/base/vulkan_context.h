@@ -150,6 +150,15 @@ class VulkanContext {
   VkRenderPass GetRenderPass() { return renderPass_; }
   VkFormat GetColorFormat() { return swapChain_.colorFormat(); }
   VkFormat GetDepthFormat() { return options_.depthFormat; }
+  size_t GetSwapChainImageCount() { return swapChain_.imageCount_; }
+  VkImageView GetSwapChainImageView(size_t i) { return swapChain_.buffers_[i].view; }
+
+  // return vulkan device wrapper
+  VulkanDevice* GetVulkanDevice() { return device_; };
+  // return raw vulkan device
+  VkDevice GetVkDevice();
+
+  const std::vector<VulkanNode>& GetVkNodeList() { return vkNodeList; };
 
   void set_vulkan_device(VulkanDevice *device) { device_ = device; };
   void AddRenderComponent(RenderComponent *rc) { rc_array_.push_back(rc); }
@@ -216,6 +225,7 @@ class VulkanContext {
     vec4f camera_position;
     vec4f light_direction;
     vec4f light_color;
+    mat4f light_mvp;
   };
 
   struct UniformBuffer {

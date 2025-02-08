@@ -1048,4 +1048,9 @@ void VulkanContext::RenderComponentBuildCommandBuffers(Scene* scene, VkCommandBu
     rc->BuildCommandBuffers(scene, command_buffer);
   }
 }
+
+VkDevice VulkanContext::GetVkDevice() {
+  return device_->device();
+}
+
 }  // namespace lvk
