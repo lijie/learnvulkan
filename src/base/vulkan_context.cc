@@ -120,8 +120,8 @@ void VulkanContext::CreateVulkanScene(Scene* scene, VulkanDevice* device) {
   }
 
   PrepareUniformBuffers(scene, device);
-  SetupDescriptorSetLayout(device);
   SetupDescriptorPool(device);
+  SetupDescriptorSetLayout(device);
   BuildPipelines();
 
   for (int i = 0; i < vkNodeList.size(); i++) {
@@ -224,27 +224,51 @@ void VulkanContext::UpdateSharedUniformBuffers(Scene* scene) {
 void VulkanContext::UpdateLightsUniformBuffers(Scene* scene) {}
 
 void VulkanContext::SetupDescriptorSetLayout(VulkanDevice* device) {
+
+  // shared descriptor set layout
   std::vector<VkDescriptorSetLayoutBinding> set_layout_bindings = {
       // global shared uniform buffers
       initializers::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                                                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0),
-      initializers::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT,
-                                               1),
-      initializers::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT,
-                                               2),
-      initializers::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT,
-                                               3),
   };
 
   VkDescriptorSetLayoutCreateInfo descriptor_layout = initializers::DescriptorSetLayoutCreateInfo(
       set_layout_bindings.data(), static_cast<uint32_t>(set_layout_bindings.size()));
 
-  VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device->device(), &descriptor_layout, nullptr, &descriptorSetLayout_));
+  VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device->device(), &descriptor_layout, nullptr, &descriptorSetLayouts_.shared));
 
+  // object descriptor set layout
+  set_layout_bindings = {
+      initializers::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT,
+                                               0),
+      initializers::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT,
+                                               1),
+      initializers::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT,
+                                               2),
+  };
+
+  descriptor_layout = initializers::DescriptorSetLayoutCreateInfo(
+      set_layout_bindings.data(), static_cast<uint32_t>(set_layout_bindings.size()));
+
+  VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device->device(), &descriptor_layout, nullptr, &descriptorSetLayouts_.object));
+
+  std::array<VkDescriptorSetLayout, 2> layouts = {descriptorSetLayouts_.shared, descriptorSetLayouts_.object};
   VkPipelineLayoutCreateInfo pipeline_layout_create_info =
-      initializers::PipelineLayoutCreateInfo(&descriptorSetLayout_, 1);
+      initializers::PipelineLayoutCreateInfo(layouts.data(), layouts.size());
 
   VK_CHECK_RESULT(vkCreatePipelineLayout(device->device(), &pipeline_layout_create_info, nullptr, &pipelineLayout_));
+
+  VkDescriptorSetAllocateInfo allocInfo =
+      initializers::DescriptorSetAllocateInfo(descriptorPool_, &descriptorSetLayouts_.shared, 1);
+  VK_CHECK_RESULT(vkAllocateDescriptorSets(device_->device(), &allocInfo, &sharedDescriptorSet_));
+
+  auto shared_descriptor = CreateDescriptor(&uniformBuffers_.shared_ub.buffer);
+  std::vector<VkWriteDescriptorSet> writeDescriptorSets = {
+      // Binding 0 : shared
+      initializers::WriteDescriptorSet(sharedDescriptorSet_, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &shared_descriptor),
+  };
+  vkUpdateDescriptorSets(device_->device(), static_cast<uint32_t>(writeDescriptorSets.size()),
+                         writeDescriptorSets.data(), 0, NULL);
 }
 
 void VulkanContext::SetupDescriptorPool(VulkanDevice* device) {
@@ -588,7 +612,7 @@ VkDescriptorSet VulkanContext::AllocDescriptorSet(VulkanNode* vkNode) {
   std::cout << std::format("AllocDescriptorSet for vkNode: {:010x}\n", (uintptr_t)vkNode);
 
   VkDescriptorSetAllocateInfo allocInfo =
-      initializers::DescriptorSetAllocateInfo(descriptorPool_, &descriptorSetLayout_, 1);
+      initializers::DescriptorSetAllocateInfo(descriptorPool_, &descriptorSetLayouts_.object, 1);
 
   VkDescriptorSet descriptor_set{VK_NULL_HANDLE};
   VK_CHECK_RESULT(vkAllocateDescriptorSets(device_->device(), &allocInfo, &descriptor_set));
@@ -604,10 +628,8 @@ VkDescriptorSet VulkanContext::AllocDescriptorSet(VulkanNode* vkNode) {
       CreateDescriptor(&uniformBuffers_.fragment_ub.buffer, uniformBuffers_.fragment_ub.alignment);
 
   std::vector<VkWriteDescriptorSet> writeDescriptorSets = {
-      // Binding 0 : shared
-      initializers::WriteDescriptorSet(descriptor_set, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &shared_descriptor),
       // Binding 1 : Vertex shader uniform buffer
-      initializers::WriteDescriptorSet(descriptor_set, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1,
+      initializers::WriteDescriptorSet(descriptor_set, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 0,
                                        &dynamic_descriptor),
       // Binding 2 : Fragment shader texture sampler
       initializers::WriteDescriptorSet(descriptor_set,
@@ -615,11 +637,11 @@ VkDescriptorSet VulkanContext::AllocDescriptorSet(VulkanNode* vkNode) {
                                                                                    // use a combined image
                                                                                    // sampler (sampler and
                                                                                    // image could be split)
-                                       2,                                          // Shader binding point 1
+                                       1,                                          // Shader binding point 1
                                        &textureDescriptor),  // Pointer to the descriptor image for our
                                                              // texture
       // Binding3 : Fragment shader uniform buffer
-      initializers::WriteDescriptorSet(descriptor_set, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 3,
+      initializers::WriteDescriptorSet(descriptor_set, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 2,
                                        &fragment_descriptor),
   };
 
@@ -777,6 +799,9 @@ void VulkanContext::BuildCommandBuffers(Scene* scene) {
     //                        GetDescriptorSetP(vkNode->descriptorSetHandle), 1, &dynamic_offset);
     vkCmdBindPipeline(drawCmdBuffers_[i], VK_PIPELINE_BIND_POINT_GRAPHICS, GetPipeline(vkNode->pipelineHandle));
 
+    vkCmdBindDescriptorSets(drawCmdBuffers_[i], VK_PIPELINE_BIND_POINT_GRAPHICS, PipelineLayout(), 0, 1,
+                            &sharedDescriptorSet_, 0, nullptr);
+
     VkDeviceSize offsets[1] = {0};
     for (auto node_index = 0; node_index < vkNodeList.size(); node_index++) {
       const auto& vkn = &vkNodeList[node_index];
@@ -788,7 +813,7 @@ void VulkanContext::BuildCommandBuffers(Scene* scene) {
       std::array<uint32_t, 2> offset_array;
       offset_array[0] = node_index * uniformBuffers_.vertex_ub.alignment;
       offset_array[1] = node_index * uniformBuffers_.fragment_ub.alignment;
-      vkCmdBindDescriptorSets(drawCmdBuffers_[i], VK_PIPELINE_BIND_POINT_GRAPHICS, PipelineLayout(), 0, 1,
+      vkCmdBindDescriptorSets(drawCmdBuffers_[i], VK_PIPELINE_BIND_POINT_GRAPHICS, PipelineLayout(), 1, 1,
                               &vkn->descriptorSet, 2, &offset_array[0]);
       vkCmdDrawIndexed(drawCmdBuffers_[i], vkn->vkMesh->indexCount, 1, 0, 0, 0);
     }

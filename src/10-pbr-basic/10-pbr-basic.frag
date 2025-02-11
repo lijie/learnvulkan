@@ -9,7 +9,7 @@ layout (binding = 0) uniform UBOShared
     vec4 light_color;
 } ubo_shared;
 
-layout (binding = 2) uniform sampler2D samplerColor;
+layout (set = 1, binding = 1) uniform sampler2D samplerColor;
 
 layout (location = 0) in vec2 inUV;
 layout (location = 1) in vec3 inNormal;
@@ -17,7 +17,7 @@ layout (location = 2) in vec3 inWorldPosition;
 
 layout (location = 0) out vec4 outFragColor;
 
-layout (binding = 3) uniform UBOFrag
+layout (set = 1, binding = 2) uniform UBOFrag
 {
 	vec4 color;
 	float roughness;

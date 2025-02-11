@@ -26,6 +26,16 @@ enum class PipelineType {
   General,
 };
 
+enum class SharedDescriptorSetLayoutBinding { 
+  UBOShared = 0,
+  UBOVP = 1,
+};
+
+enum class PerObjectDescriptorSetLayoutBinding { 
+  UBOModel = 0,
+  TextureSampler = 1,
+};
+
 // 用于在渲染流程中插入自定义渲染逻辑
 class RenderComponent {
   public:
@@ -134,7 +144,7 @@ class VulkanContext {
   // }
 
   VkDescriptorPool DescriptorPool() { return descriptorPool_; }
-  const VkDescriptorSetLayout *DescriptorSetLayout() { return &descriptorSetLayout_; }
+  // const VkDescriptorSetLayout *DescriptorSetLayout() { return &descriptorSetLayout_; }
   VkPipelineLayout PipelineLayout() { return pipelineLayout_; }
 
   const VulkanNode *GetVkNode(int handle) { return &vkNodeList[handle]; }
@@ -167,7 +177,18 @@ class VulkanContext {
   VulkanSwapchain swapChain_;
   VkDescriptorPool descriptorPool_{VK_NULL_HANDLE};
   // VkDescriptorSet descriptorSet_{VK_NULL_HANDLE};
-  VkDescriptorSetLayout descriptorSetLayout_{VK_NULL_HANDLE};
+  // VkDescriptorSetLayout descriptorSetLayout_{VK_NULL_HANDLE};
+  // VkDescriptorSetLayout sharedDescriptorSetLayout_{VK_NULL_HANDLE};
+
+  // 我们创建2个 DescriptorSet, 一个用于共享数据, 比如VP矩阵, 光照数据, 一个用于对象数据, 比如Model矩阵
+  struct DescriptorSetLayouts {
+	  VkDescriptorSetLayout shared{ VK_NULL_HANDLE };
+	  VkDescriptorSetLayout object{ VK_NULL_HANDLE };
+    // extend here?
+  } descriptorSetLayouts_;
+
+  VkDescriptorSet sharedDescriptorSet_{VK_NULL_HANDLE};
+
   VkPipelineLayout pipelineLayout_{VK_NULL_HANDLE};
   // VkRenderPass renderPass_ = VK_NULL_HANDLE;
   VulkanDevice *device_{nullptr};

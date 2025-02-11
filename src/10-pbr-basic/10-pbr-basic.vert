@@ -4,14 +4,14 @@ layout (location = 0) in vec3 inPos;
 layout (location = 1) in vec3 inNormal;
 layout (location = 2) in vec2 inUV;
 
-layout (binding = 0) uniform UBOShared
+layout (set = 0, binding = 0) uniform UBOShared
 {
 	vec4 camera_position;
 	vec4 light_direction;
     vec4 light_color;
 } ubo_shared;
 
-layout (binding = 1) uniform UBO 
+layout (set = 1, binding = 0) uniform UBO 
 {
 	mat4 projection;
 	mat4 view;
