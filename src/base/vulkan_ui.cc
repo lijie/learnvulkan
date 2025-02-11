@@ -509,7 +509,7 @@ void VulkanUIRenderWrapper::Prepare(VulkanDevice* device, VulkanContext* context
         context->LoadFragmentShader("uioverlay.frag.spv"),
     };
     ui_->PrepareResources();
-    ui_->PreparePipeline(context->GetPipelineCache(), context->GetRenderPass(), context->GetColorFormat(),
+    ui_->PreparePipeline(context->GetPipelineCache(), context->GetBasePassVkHandle(), context->GetColorFormat(),
                          context->GetDepthFormat());
   }
   // ui end

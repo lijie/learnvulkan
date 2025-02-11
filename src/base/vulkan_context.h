@@ -98,8 +98,6 @@ class VulkanContext {
   void SetupDescriptorPool(VulkanDevice *device);
   void SetupDescriptorSetLayout(VulkanDevice *device);
   VkDescriptorSet AllocDescriptorSet(VulkanNode *vkNode);
-  void SetupRenderPass();
-  void SetupShadowRenderPass();
   void CreatePipelineCache();
   void BuildPipelines();
 
@@ -107,10 +105,6 @@ class VulkanContext {
   void CreateCommandBuffers();
   void BuildCommandBuffers(Scene *scene);
   void CreateSynchronizationPrimitives();
-
-  void SetupFrameBuffer();
-  void SetupShadowFrameBuffer();
-  void SetupDepthStencil();
 
   void InitSwapchain();
   void SetupSwapchain();
@@ -128,7 +122,7 @@ class VulkanContext {
   const VkPipelineVertexInputStateCreateInfo &BuildVertexInputState();
 
   VkInstance instance() const { return instance_; }
-  VkRenderPass renderPass() const { return renderPass_; }
+  // VkRenderPass renderPass() const { return renderPass_; }
 
   // helpers
   VkDescriptorBufferInfo CreateDescriptor(VulkanBuffer *buffer, VkDeviceSize size = VK_WHOLE_SIZE,
@@ -147,7 +141,8 @@ class VulkanContext {
   VkPipeline GetPipeline(int handle) { return pipelineList[handle]; }
   VkQueue GetQueue() { return queue_; }
   VkPipelineCache GetPipelineCache() { return pipelineCache_; }
-  VkRenderPass GetRenderPass() { return renderPass_; }
+  // VkRenderPass GetRenderPass() { return renderPass_; }
+  VkRenderPass GetBasePassVkHandle();
   VkFormat GetColorFormat() { return swapChain_.colorFormat(); }
   VkFormat GetDepthFormat() { return options_.depthFormat; }
   size_t GetSwapChainImageCount() { return swapChain_.imageCount_; }
@@ -174,11 +169,11 @@ class VulkanContext {
   // VkDescriptorSet descriptorSet_{VK_NULL_HANDLE};
   VkDescriptorSetLayout descriptorSetLayout_{VK_NULL_HANDLE};
   VkPipelineLayout pipelineLayout_{VK_NULL_HANDLE};
-  VkRenderPass renderPass_ = VK_NULL_HANDLE;
+  // VkRenderPass renderPass_ = VK_NULL_HANDLE;
   VulkanDevice *device_{nullptr};
   VkPipelineCache pipelineCache_{VK_NULL_HANDLE};
 
-  std::vector<VkFramebuffer> frameBuffers_;
+  // std::vector<VkFramebuffer> frameBuffers_;
   uint32_t currentBuffer_ = 0;
   VkQueue queue_;
 
@@ -192,11 +187,11 @@ class VulkanContext {
   std::vector<const char *> enabledDeviceExtensions;
   std::vector<const char *> enabledInstanceExtensions;
 
-  struct FrameBufferAttachment {
-    VkImage image;
-    VkDeviceMemory mem;
-    VkImageView view;
-  } depthStencil_;
+  // struct FrameBufferAttachment {
+  //   VkImage image;
+  //   VkDeviceMemory mem;
+  //   VkImageView view;
+  // } depthStencil_;
 
   struct {
     // Swap chain image presentation
@@ -272,6 +267,7 @@ class VulkanContext {
 
   std::vector<RenderComponent*> rc_array_;
 
+#if 0
   struct ShadowPassInfo {
 	  int32_t width, height;
 	  VkFramebuffer frameBuffer;
@@ -281,6 +277,10 @@ class VulkanContext {
 	  VkDescriptorImageInfo descriptor;
     VkFormat depthFormat{VK_FORMAT_D16_UNORM};
   } shadowPassInfo_{};
+#endif
+
+  std::vector<class VulkanRenderPass*> allRenderPass_;
+  class VulkanRenderPass* basePass_{nullptr};
 
   VkResult CreateInstance(bool enableValidation);
   VkPipelineShaderStageCreateInfo LoadShader(std::string fileName, VkShaderStageFlagBits stage, VulkanDevice *device);

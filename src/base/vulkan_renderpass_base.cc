@@ -91,6 +91,47 @@ void VulkanBasePass::SetupRenderPass() {
       vkCreateRenderPass(context_->GetVkDevice(), &renderPassInfo, nullptr, &renderPassData_.renderPassHandle));
 }
 
+void VulkanBasePass::SetupDepthStencil() {
+  VkImageCreateInfo imageCI{};
+  imageCI.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+  imageCI.imageType = VK_IMAGE_TYPE_2D;
+  imageCI.format = context_->GetDepthFormat();
+  imageCI.extent = {context_->width, context_->height, 1};
+  imageCI.mipLevels = 1;
+  imageCI.arrayLayers = 1;
+  imageCI.samples = VK_SAMPLE_COUNT_1_BIT;
+  imageCI.tiling = VK_IMAGE_TILING_OPTIMAL;
+  imageCI.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+
+  VK_CHECK_RESULT(vkCreateImage(context_->GetVkDevice(), &imageCI, nullptr, &depthStencil_.image));
+  VkMemoryRequirements memReqs{};
+  vkGetImageMemoryRequirements(context_->GetVkDevice(), depthStencil_.image, &memReqs);
+
+  VkMemoryAllocateInfo memAllloc{};
+  memAllloc.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+  memAllloc.allocationSize = memReqs.size;
+  memAllloc.memoryTypeIndex = context_->GetVulkanDevice()->GetMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+  VK_CHECK_RESULT(vkAllocateMemory(context_->GetVkDevice(), &memAllloc, nullptr, &depthStencil_.mem));
+  VK_CHECK_RESULT(vkBindImageMemory(context_->GetVkDevice(), depthStencil_.image, depthStencil_.mem, 0));
+
+  VkImageViewCreateInfo imageViewCI{};
+  imageViewCI.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+  imageViewCI.viewType = VK_IMAGE_VIEW_TYPE_2D;
+  imageViewCI.image = depthStencil_.image;
+  imageViewCI.format = context_->GetDepthFormat();
+  imageViewCI.subresourceRange.baseMipLevel = 0;
+  imageViewCI.subresourceRange.levelCount = 1;
+  imageViewCI.subresourceRange.baseArrayLayer = 0;
+  imageViewCI.subresourceRange.layerCount = 1;
+  imageViewCI.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+  // Stencil aspect should only be set on depth + stencil formats
+  // (VK_FORMAT_D16_UNORM_S8_UINT..VK_FORMAT_D32_SFLOAT_S8_UINT
+  if (context_->GetDepthFormat() >= VK_FORMAT_D16_UNORM_S8_UINT) {
+    imageViewCI.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+  }
+  VK_CHECK_RESULT(vkCreateImageView(context_->GetVkDevice(), &imageViewCI, nullptr, &depthStencil_.view));
+}
+
 void VulkanBasePass::SetupFrameBuffer() {
   VkImageView attachments[2];
 
@@ -114,101 +155,15 @@ void VulkanBasePass::SetupFrameBuffer() {
     attachments[0] = context_->GetSwapChainImageView(i);
     VK_CHECK_RESULT(vkCreateFramebuffer(context_->GetVkDevice(), &frameBufferCreateInfo, nullptr, &frameBuffers_[i]));
   }
+
+  renderPassData_.frameBuffers = frameBuffers_;
 }
 
-// TODO: use global proj & view matrix
-void VulkanBasePass::PrepareUniformBuffers() {
-#if 1
-  const auto& vkNodeList = context_->GetVkNodeList();
-  const auto& device = context_->GetVulkanDevice();
 
-  size_t bufferSize = vkNodeList.size() * sizeof(_UBOMesh);
-  VK_CHECK_RESULT(device->CreateBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                                       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                                       &uniformBuffers_.vertex_ub.buffer, bufferSize));
-  uniformBuffers_.vertex_ub.buffer_size = bufferSize;
-  uniformBuffers_.vertex_ub.alignment = sizeof(_UBOMesh);
-
-  size_t fragment_ub_size = vkNodeList.size() * sizeof(_UBOFragment);
-  VK_CHECK_RESULT(device->CreateBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                                       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                                       &uniformBuffers_.fragment_ub.buffer, fragment_ub_size));
-  uniformBuffers_.fragment_ub.buffer_size = fragment_ub_size;
-  uniformBuffers_.fragment_ub.alignment = sizeof(_UBOFragment);
-
-  // save all model matrix
-  // TODO: necessay?
-  uniformBuffers_.model = reinterpret_cast<_UBOMesh*>(malloc(bufferSize));
-  uniformBuffers_.fragment_data = reinterpret_cast<_UBOFragment*>(malloc(fragment_ub_size));
-
-  // shared
-  size_t shared_ub_size = UNIFORM_ALIGNMENT(sizeof(_UBOShared));
-  VK_CHECK_RESULT(device->CreateBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                                       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                                       &uniformBuffers_.shared_ub.buffer, shared_ub_size));
-  uniformBuffers_.shared_ub.buffer_size = shared_ub_size;
-  uniformBuffers_.shared_ub.alignment = shared_ub_size;
-  uniformBuffers_.shared = reinterpret_cast<_UBOShared*>(malloc(shared_ub_size));
-  memset(uniformBuffers_.shared, 0, shared_ub_size);
-
-  UpdateUniformBuffers();
-#endif
+void VulkanBasePass::Prepare() {
+  SetupDepthStencil();
+  SetupRenderPass();
+  SetupFrameBuffer();
 }
 
-void VulkanBasePass::UpdateUniformBuffers() {
-  UpdateVertexUniformBuffers();
-  UpdateFragmentUniformBuffers();
-  UpdateSharedUniformBuffers();
-}
-
-void VulkanBasePass::UpdateVertexUniformBuffers() {
-  const auto& camera_matrix = scene_->GetCameraMatrix();
-  const auto& vkNodeList = context_->GetVkNodeList();
-  // update model matrix
-  for (size_t i = 0; i < vkNodeList.size(); i++) {
-    const auto& vkNode = vkNodeList[i];
-    auto& ubo = uniformBuffers_.model[i]; 
-    ubo.model = vkNode.sceneNode->ModelMatrix();
-    ubo.projection = camera_matrix.proj;
-    ubo.view = camera_matrix.view;
-  }
-
-  // update to gpu
-  uniformBuffers_.vertex_ub.buffer.Update(reinterpret_cast<const uint8_t*>(uniformBuffers_.model),
-                                          uniformBuffers_.vertex_ub.buffer_size);
-}
-
-void VulkanBasePass::UpdateFragmentUniformBuffers() {
-  const auto& vkNodeList = context_->GetVkNodeList();
-  // update model matrix
-  for (size_t i = 0; i < vkNodeList.size(); i++) {
-    const auto& vkNode = vkNodeList[i];
-    auto& data = uniformBuffers_.fragment_data[i];
-    data.color = vec4f(vkNode.sceneNode->materialParamters.baseColor, 1.0);
-    data.metallic = vkNode.sceneNode->materialParamters.metallic;
-    data.roughness = vkNode.sceneNode->materialParamters.roughness;
-  }
-
-  // update to gpu
-  uniformBuffers_.fragment_ub.buffer.Update(reinterpret_cast<const uint8_t*>(uniformBuffers_.fragment_data),
-                                            uniformBuffers_.fragment_ub.buffer_size);
-}
-
-void VulkanBasePass::UpdateSharedUniformBuffers() {
-  uniformBuffers_.shared->camera_position = vec4f(scene_->GetCamera()->GetLocation(), 1.0);
-
-  const auto& light_array = scene_->GetAllLights();
-  // uniformBuffers_.shared[0].light_num = light_array.size();
-
-  for (auto i = 0; i < light_array.size(); i++) {
-    uniformBuffers_.shared->light_direction = vec4f(light_array[i]->GetForwardVector(), 1.0);
-    uniformBuffers_.shared->light_color = vec4f(light_array[i]->color(), 1.0);
-  }
-
-  // update to gpu
-  uniformBuffers_.shared_ub.buffer.Update(reinterpret_cast<const uint8_t*>(uniformBuffers_.shared),
-                                          sizeof(*uniformBuffers_.shared));
-}
-
-void VulkanBasePass::Prepare() { SetupRenderPass(); }
 }  // namespace lvk
