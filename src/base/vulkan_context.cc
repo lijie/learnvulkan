@@ -120,7 +120,6 @@ void VulkanContext::CreateVulkanScene(Scene* scene, VulkanDevice* device) {
   }
 
   PrepareUniformBuffers(scene, device);
-  SetupDescriptorPool(device);
   SetupDescriptorSetLayout(device);
   BuildPipelines();
 
@@ -181,8 +180,6 @@ void VulkanContext::UpdateVertexUniformBuffers(Scene* scene) {
     const auto& vkNode = vkNodeList[i];
     auto& ubo = uniformBuffers_.model[i];
     ubo.model = vkNode.sceneNode->ModelMatrix();
-    ubo.projection = camera_matrix.proj;
-    ubo.view = camera_matrix.view;
   }
 
   // update to gpu
@@ -216,6 +213,10 @@ void VulkanContext::UpdateSharedUniformBuffers(Scene* scene) {
     uniformBuffers_.shared->light_color = vec4f(light_array[i]->color(), 1.0);
   }
 
+  const auto& camera_matrix = scene->GetCameraMatrix();
+  uniformBuffers_.shared->projection = camera_matrix.proj;
+  uniformBuffers_.shared->view = camera_matrix.view;
+
   // update to gpu
   uniformBuffers_.shared_ub.buffer.Update(reinterpret_cast<const uint8_t*>(uniformBuffers_.shared),
                                           sizeof(*uniformBuffers_.shared));
@@ -224,6 +225,18 @@ void VulkanContext::UpdateSharedUniformBuffers(Scene* scene) {
 void VulkanContext::UpdateLightsUniformBuffers(Scene* scene) {}
 
 void VulkanContext::SetupDescriptorSetLayout(VulkanDevice* device) {
+  // TODO: pool size 怎么算的?
+  // Example uses one ubo and one image sampler
+  std::vector<VkDescriptorPoolSize> pool_sizes = {
+      initializers::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 4),
+      initializers::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 16),
+      initializers::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2)};
+
+  // TODO: maxSets 怎么算的?
+  VkDescriptorPoolCreateInfo descriptor_pool_create_info =
+      initializers::DescriptorPoolCreateInfo(static_cast<uint32_t>(pool_sizes.size()), pool_sizes.data(), 16);
+
+  VK_CHECK_RESULT(vkCreateDescriptorPool(device->device(), &descriptor_pool_create_info, nullptr, &descriptorPool_));
 
   // shared descriptor set layout
   std::vector<VkDescriptorSetLayoutBinding> set_layout_bindings = {
@@ -269,21 +282,6 @@ void VulkanContext::SetupDescriptorSetLayout(VulkanDevice* device) {
   };
   vkUpdateDescriptorSets(device_->device(), static_cast<uint32_t>(writeDescriptorSets.size()),
                          writeDescriptorSets.data(), 0, NULL);
-}
-
-void VulkanContext::SetupDescriptorPool(VulkanDevice* device) {
-  // TODO: pool size 怎么算的?
-  // Example uses one ubo and one image sampler
-  std::vector<VkDescriptorPoolSize> pool_sizes = {
-      initializers::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 4),
-      initializers::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 16),
-      initializers::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2)};
-
-  // TODO: maxSets 怎么算的?
-  VkDescriptorPoolCreateInfo descriptor_pool_create_info =
-      initializers::DescriptorPoolCreateInfo(static_cast<uint32_t>(pool_sizes.size()), pool_sizes.data(), 16);
-
-  VK_CHECK_RESULT(vkCreateDescriptorPool(device->device(), &descriptor_pool_create_info, nullptr, &descriptorPool_));
 }
 
 // TODO: support non-interleaved vertex data

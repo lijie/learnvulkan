@@ -9,12 +9,13 @@ layout (set = 0, binding = 0) uniform UBOShared
 	vec4 camera_position;
 	vec4 light_direction;
     vec4 light_color;
+	mat4 light_mvp;
+	mat4 projection;
+	mat4 view;
 } ubo_shared;
 
 layout (set = 1, binding = 0) uniform UBO 
 {
-	mat4 projection;
-	mat4 view;
 	mat4 model;
 } ubo;
 
@@ -33,7 +34,7 @@ void main()
 
 	vec3 worldPos = vec3(ubo.model * vec4(inPos, 1.0));
 
-	gl_Position = ubo.projection * ubo.view * ubo.model * vec4(inPos.xyz, 1.0);
+	gl_Position = ubo_shared.projection * ubo_shared.view * ubo.model * vec4(inPos.xyz, 1.0);
 
     vec4 pos = ubo.model * vec4(inPos, 1.0);
 	// outNormal = mat3(inverse(transpose(ubo.model))) * inNormal;

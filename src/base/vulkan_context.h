@@ -105,7 +105,6 @@ class VulkanContext {
   void UpdateSharedUniformBuffers(Scene *scene);
   void UpdateLightsUniformBuffers(Scene *scene);
 
-  void SetupDescriptorPool(VulkanDevice *device);
   void SetupDescriptorSetLayout(VulkanDevice *device);
   VkDescriptorSet AllocDescriptorSet(VulkanNode *vkNode);
   void CreatePipelineCache();
@@ -224,8 +223,6 @@ class VulkanContext {
   VkPipelineStageFlags submitPipelineStages_ = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 
   struct _UBOMesh {
-    glm::mat4 projection;
-    glm::mat4 view;
     glm::mat4 model;
   };
 
@@ -242,6 +239,8 @@ class VulkanContext {
     vec4f light_direction;
     vec4f light_color;
     mat4f light_mvp;
+    mat4f projection;
+    mat4f view;
   };
 
   struct UniformBuffer {

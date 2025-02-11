@@ -2,11 +2,14 @@
 
 const float PI = 3.14159265359;
 
-layout (binding = 0) uniform UBOShared
+layout (set = 0, binding = 0) uniform UBOShared
 {
 	vec4 camera_position;
 	vec4 light_direction;
     vec4 light_color;
+	mat4 light_mvp;
+	mat4 projection;
+	mat4 view;
 } ubo_shared;
 
 layout (set = 1, binding = 1) uniform sampler2D samplerColor;
