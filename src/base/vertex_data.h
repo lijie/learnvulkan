@@ -19,6 +19,8 @@ struct VertexLayout {
   Vector3 position;
   Vector3 normal;
   Vector2 uv;
+
+  static VkPipelineVertexInputStateCreateInfo GetPiplineVertexInputState();
 };
 
 struct LineVertexLayout {

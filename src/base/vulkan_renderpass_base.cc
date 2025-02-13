@@ -2,13 +2,13 @@
 
 #include <array>
 
-#include "scene.h"
-#include "directional_light.h"
-
+// #include "directional_light.h"
+// #include "scene.h"
 #include "vulkan/vulkan_core.h"
 #include "vulkan_context.h"
+#include "vulkan_initializers.h"
+#include "vulkan_pipelinebuilder.h"
 #include "vulkan_tools.h"
-
 
 namespace lvk {
 
@@ -110,7 +110,8 @@ void VulkanBasePass::SetupDepthStencil() {
   VkMemoryAllocateInfo memAllloc{};
   memAllloc.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
   memAllloc.allocationSize = memReqs.size;
-  memAllloc.memoryTypeIndex = context_->GetVulkanDevice()->GetMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+  memAllloc.memoryTypeIndex =
+      context_->GetVulkanDevice()->GetMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
   VK_CHECK_RESULT(vkAllocateMemory(context_->GetVkDevice(), &memAllloc, nullptr, &depthStencil_.mem));
   VK_CHECK_RESULT(vkBindImageMemory(context_->GetVkDevice(), depthStencil_.image, depthStencil_.mem, 0));
 
@@ -159,11 +160,91 @@ void VulkanBasePass::SetupFrameBuffer() {
   renderPassData_.frameBuffers = frameBuffers_;
 }
 
-
 void VulkanBasePass::Prepare() {
   SetupDepthStencil();
   SetupRenderPass();
   SetupFrameBuffer();
 }
+
+static VkClearColorValue defaultClearColor = {{0.025f, 0.025f, 0.025f, 1.0f}};
+
+void VulkanBasePass::BuildCommandBuffer(int cmdBufferIndex, VkCommandBuffer cmdBuffer,
+                                        const VkCommandBufferBeginInfo* BeginInfo) {
+#if 0
+  VkClearValue clearValues[2];
+  clearValues[0].color = defaultClearColor;
+  clearValues[1].depthStencil = {1.0f, 0};
+
+  VkRenderPassBeginInfo renderPassBeginInfo = initializers::RenderPassBeginInfo();
+  renderPassBeginInfo.renderPass = renderPassData_.renderPassHandle;
+  renderPassBeginInfo.renderArea.offset.x = 0;
+  renderPassBeginInfo.renderArea.offset.y = 0;
+  renderPassBeginInfo.renderArea.extent.width = context_->width;
+  renderPassBeginInfo.renderArea.extent.height = context_->height;
+  renderPassBeginInfo.clearValueCount = 2;
+  renderPassBeginInfo.pClearValues = clearValues;
+
+  const auto& vkNode = context_->GetVkNode(0);
+  // Set target frame buffer
+  renderPassBeginInfo.framebuffer = renderPassData_.frameBuffers[cmdBufferIndex];
+
+  VK_CHECK_RESULT(vkBeginCommandBuffer(cmdBuffer, BeginInfo));
+
+  vkCmdBeginRenderPass(cmdBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+  VkViewport viewport = initializers::Viewport((float)context_->width, (float)context_->height, 0.0f, 1.0f);
+  vkCmdSetViewport(cmdBuffer, 0, 1, &viewport);
+
+  VkRect2D scissor = initializers::Rect2D(context_->width, context_->height, 0, 0);
+  vkCmdSetScissor(cmdBuffer, 0, 1, &scissor);
+
+  // uint32_t dynamic_offset = 0;
+  // vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, PipelineLayout(), 0, 1,
+  //                        GetDescriptorSetP(vkNode->descriptorSetHandle), 1, &dynamic_offset);
+  vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, GetPipeline(vkNode->pipelineHandle));
+
+  vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, PipelineLayout(), 0, 1, &sharedDescriptorSet_, 0,
+                          nullptr);
+
+  VkDeviceSize offsets[1] = {0};
+  for (auto node_index = 0; node_index < vkNodeList.size(); node_index++) {
+    const auto& vkn = &vkNodeList[node_index];
+    auto vkvb = vkn->vkMesh->vertexBuffer->buffer();
+    auto vkib = vkn->vkMesh->indexBuffer->buffer();
+    vkCmdBindVertexBuffers(cmdBuffer, VERTEX_BUFFER_BIND_ID, 1, &vkvb, offsets);
+    vkCmdBindIndexBuffer(cmdBuffer, vkib, 0, VK_INDEX_TYPE_UINT32);
+
+    std::array<uint32_t, 2> offset_array;
+    offset_array[0] = node_index * uniformBuffers_.vertex_ub.alignment;
+    offset_array[1] = node_index * uniformBuffers_.fragment_ub.alignment;
+    vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, PipelineLayout(), 1, 1, &vkn->descriptorSet, 2,
+                            &offset_array[0]);
+    vkCmdDrawIndexed(cmdBuffer, vkn->vkMesh->indexCount, 1, 0, 0, 0);
+  }
+#endif
+}
+
+void VulkanBasePass::BuildPipeline() {
+  std::vector<VkPipelineColorBlendAttachmentState> colorBlendAttachmentStates;
+  colorBlendAttachmentStates.push_back(initializers::PipelineColorBlendAttachmentState(0xf, VK_FALSE));
+
+  // for general object
+  VulkanPipelineBuilder()
+      .dynamicStates({VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR})
+      .primitiveTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
+      .polygonMode(VK_POLYGON_MODE_FILL)
+      .vertexInputState(VertexLayout::GetPiplineVertexInputState())
+      .cullMode(VK_CULL_MODE_NONE)
+      .frontFace(VK_FRONT_FACE_COUNTER_CLOCKWISE)
+      .colorBlendAttachmentStates(colorBlendAttachmentStates)
+      .depthWriteEnable(true)
+      .depthCompareOp(VK_COMPARE_OP_LESS_OR_EQUAL)
+      .rasterizationSamples(VK_SAMPLE_COUNT_1_BIT)
+      .shaderStages(context_->GetVkNode(0)->shaderStages)
+      .build(context_->GetVkDevice(), context_->GetPipelineCache(), context_->PipelineLayout(),
+             renderPassData_.renderPassHandle, &renderPassData_.pipelineHandle, "BasePass");
+}
+
+void VulkanBasePass::OnSceneChanged() { BuildPipeline(); }
 
 }  // namespace lvk

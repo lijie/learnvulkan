@@ -123,6 +123,8 @@ void VulkanContext::CreateVulkanScene(Scene* scene, VulkanDevice* device) {
   SetupDescriptorSetLayout(device);
   BuildPipelines();
 
+  basePass_->OnSceneChanged();
+
   for (int i = 0; i < vkNodeList.size(); i++) {
     FindOrCreateDescriptorSet(&vkNodeList[i]);
   }
@@ -284,6 +286,7 @@ void VulkanContext::SetupDescriptorSetLayout(VulkanDevice* device) {
                          writeDescriptorSets.data(), 0, NULL);
 }
 
+#if 0
 // TODO: support non-interleaved vertex data
 const VkPipelineVertexInputStateCreateInfo& VulkanContext::BuildVertexInputState() {
   vertexInputState_.bindingDescriptions[0] = lvk::initializers::VertexInputBindingDescription(
@@ -310,6 +313,7 @@ const VkPipelineVertexInputStateCreateInfo& VulkanContext::BuildVertexInputState
   vertexInputState_.inputState.pVertexAttributeDescriptions = vertexInputState_.attributeDescriptions.data();
   return vertexInputState_.inputState;
 }
+#endif
 
 VkResult VulkanContext::CreateInstance(bool enableValidation) {
   // this->settings.validation = enableValidation;
@@ -547,7 +551,7 @@ void VulkanContext::BuildPipelines() {
   // todo
   CreatePipelineCache();
   // todo
-  pipelineList.resize(static_cast<std::size_t>(NodeType::MAX));
+  // pipelineList.resize(static_cast<std::size_t>(NodeType::MAX));
 
 #if 0
   // for shadowmap
@@ -567,6 +571,7 @@ void VulkanContext::BuildPipelines() {
              &pipelineList[static_cast<std::size_t>(NodeType::Object)], "shadowmap");
 #endif
 
+#if 0
   std::vector<VkPipelineColorBlendAttachmentState> colorBlendAttachmentStates;
   colorBlendAttachmentStates.push_back(initializers::PipelineColorBlendAttachmentState(0xf, VK_FALSE));
 
@@ -575,7 +580,7 @@ void VulkanContext::BuildPipelines() {
       .dynamicStates({VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR})
       .primitiveTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
       .polygonMode(VK_POLYGON_MODE_FILL)
-      .vertexInputState(BuildVertexInputState())
+      .vertexInputState(VertexLayout::GetPiplineVertexInputState())
       .cullMode(VK_CULL_MODE_NONE)
       .frontFace(VK_FRONT_FACE_COUNTER_CLOCKWISE)
       .colorBlendAttachmentStates(colorBlendAttachmentStates)
@@ -585,6 +590,7 @@ void VulkanContext::BuildPipelines() {
       .shaderStages(GetVkNode(0)->shaderStages)
       .build(device_->device(), pipelineCache_, PipelineLayout(), basePass_->GetRenderPassData().renderPassHandle,
              &pipelineList[static_cast<std::size_t>(NodeType::Object)], "05-GraphicPipline");
+#endif
 #if 0
   // for skybox
   VulkanPipelineBuilder()
@@ -795,7 +801,7 @@ void VulkanContext::BuildCommandBuffers(Scene* scene) {
     // uint32_t dynamic_offset = 0;
     // vkCmdBindDescriptorSets(drawCmdBuffers_[i], VK_PIPELINE_BIND_POINT_GRAPHICS, PipelineLayout(), 0, 1,
     //                        GetDescriptorSetP(vkNode->descriptorSetHandle), 1, &dynamic_offset);
-    vkCmdBindPipeline(drawCmdBuffers_[i], VK_PIPELINE_BIND_POINT_GRAPHICS, GetPipeline(vkNode->pipelineHandle));
+    vkCmdBindPipeline(drawCmdBuffers_[i], VK_PIPELINE_BIND_POINT_GRAPHICS, basePass_->GetRenderPassData().pipelineHandle);
 
     vkCmdBindDescriptorSets(drawCmdBuffers_[i], VK_PIPELINE_BIND_POINT_GRAPHICS, PipelineLayout(), 0, 1,
                             &sharedDescriptorSet_, 0, nullptr);

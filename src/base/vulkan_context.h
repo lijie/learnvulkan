@@ -128,8 +128,6 @@ class VulkanContext {
   VkPipelineShaderStageCreateInfo LoadVertexShader(const std::string& path);
   VkPipelineShaderStageCreateInfo LoadFragmentShader(const std::string& path);
 
-  const VkPipelineVertexInputStateCreateInfo &BuildVertexInputState();
-
   VkInstance instance() const { return instance_; }
   // VkRenderPass renderPass() const { return renderPass_; }
 
@@ -147,7 +145,7 @@ class VulkanContext {
   VkPipelineLayout PipelineLayout() { return pipelineLayout_; }
 
   const VulkanNode *GetVkNode(int handle) { return &vkNodeList[handle]; }
-  VkPipeline GetPipeline(int handle) { return pipelineList[handle]; }
+  // VkPipeline GetPipeline(int handle) { return pipelineList[handle]; }
   VkQueue GetQueue() { return queue_; }
   VkPipelineCache GetPipelineCache() { return pipelineCache_; }
   // VkRenderPass GetRenderPass() { return renderPass_; }
@@ -274,7 +272,7 @@ class VulkanContext {
     VkPipelineVertexInputStateCreateInfo inputState;
   } vertexInputState_;
 
-  std::vector<VkPipeline> pipelineList;
+  // std::vector<VkPipeline> pipelineList;
   // std::vector<VkDescriptorSet> descriptorSetList;
 
   std::vector<VulkanTexture *> vkTextureList;
