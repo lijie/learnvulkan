@@ -22,7 +22,7 @@ class VulkanBasePass : public VulkanRenderPass {
   void SetupDepthStencil();
   void SetupFrameBuffer();
   void SetupRenderPass();
-
+  void SetupDescriptorSet();
   void BuildPipeline();
 
 };

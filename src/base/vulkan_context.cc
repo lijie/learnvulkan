@@ -774,65 +774,73 @@ void VulkanContext::BuildCommandBuffers(Scene* scene) {
   clearValues[0].color = defaultClearColor;
   clearValues[1].depthStencil = {1.0f, 0};
 
-  VkRenderPassBeginInfo renderPassBeginInfo = initializers::RenderPassBeginInfo();
-  renderPassBeginInfo.renderPass = GetBasePassVkHandle();
-  renderPassBeginInfo.renderArea.offset.x = 0;
-  renderPassBeginInfo.renderArea.offset.y = 0;
-  renderPassBeginInfo.renderArea.extent.width = width;
-  renderPassBeginInfo.renderArea.extent.height = height;
-  renderPassBeginInfo.clearValueCount = 2;
-  renderPassBeginInfo.pClearValues = clearValues;
-
   for (int32_t i = 0; i < drawCmdBuffers_.size(); ++i) {
-    const auto& vkNode = GetVkNode(0);
-    // Set target frame buffer
-    renderPassBeginInfo.framebuffer = basePass_->GetRenderPassData().frameBuffers[i];
-
     VK_CHECK_RESULT(vkBeginCommandBuffer(drawCmdBuffers_[i], &cmdBufInfo));
 
-    vkCmdBeginRenderPass(drawCmdBuffers_[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-    VkViewport viewport = initializers::Viewport((float)width, (float)height, 0.0f, 1.0f);
-    vkCmdSetViewport(drawCmdBuffers_[i], 0, 1, &viewport);
-
-    VkRect2D scissor = initializers::Rect2D(width, height, 0, 0);
-    vkCmdSetScissor(drawCmdBuffers_[i], 0, 1, &scissor);
-
-    // uint32_t dynamic_offset = 0;
-    // vkCmdBindDescriptorSets(drawCmdBuffers_[i], VK_PIPELINE_BIND_POINT_GRAPHICS, PipelineLayout(), 0, 1,
-    //                        GetDescriptorSetP(vkNode->descriptorSetHandle), 1, &dynamic_offset);
-    vkCmdBindPipeline(drawCmdBuffers_[i], VK_PIPELINE_BIND_POINT_GRAPHICS, basePass_->GetRenderPassData().pipelineHandle);
-
-    vkCmdBindDescriptorSets(drawCmdBuffers_[i], VK_PIPELINE_BIND_POINT_GRAPHICS, PipelineLayout(), 0, 1,
-                            &sharedDescriptorSet_, 0, nullptr);
-
-    VkDeviceSize offsets[1] = {0};
-    for (auto node_index = 0; node_index < vkNodeList.size(); node_index++) {
-      const auto& vkn = &vkNodeList[node_index];
-      auto vkvb = vkn->vkMesh->vertexBuffer->buffer();
-      auto vkib = vkn->vkMesh->indexBuffer->buffer();
-      vkCmdBindVertexBuffers(drawCmdBuffers_[i], VERTEX_BUFFER_BIND_ID, 1, &vkvb, offsets);
-      vkCmdBindIndexBuffer(drawCmdBuffers_[i], vkib, 0, VK_INDEX_TYPE_UINT32);
-
-      std::array<uint32_t, 2> offset_array;
-      offset_array[0] = node_index * uniformBuffers_.vertex_ub.alignment;
-      offset_array[1] = node_index * uniformBuffers_.fragment_ub.alignment;
-      vkCmdBindDescriptorSets(drawCmdBuffers_[i], VK_PIPELINE_BIND_POINT_GRAPHICS, PipelineLayout(), 1, 1,
-                              &vkn->descriptorSet, 2, &offset_array[0]);
-      vkCmdDrawIndexed(drawCmdBuffers_[i], vkn->vkMesh->indexCount, 1, 0, 0, 0);
+    // shadow pass
+    {
+      VkRenderPassBeginInfo renderPassBeginInfo = initializers::RenderPassBeginInfo();
+      renderPassBeginInfo.renderPass = GetBasePassVkHandle();
+      renderPassBeginInfo.renderArea.offset.x = 0;
+      renderPassBeginInfo.renderArea.offset.y = 0;
+      renderPassBeginInfo.renderArea.extent.width = width;
+      renderPassBeginInfo.renderArea.extent.height = height;
+      renderPassBeginInfo.clearValueCount = 2;
+      renderPassBeginInfo.pClearValues = clearValues;
+      renderPassBeginInfo.framebuffer = basePass_->GetRenderPassData().frameBuffers[i];
     }
 
-#if 0
-    auto vkvb = vkNode->vkMesh->vertexBuffer->buffer();
-    auto vkib = vkNode->vkMesh->indexBuffer->buffer();
-    vkCmdBindVertexBuffers(drawCmdBuffers_[i], VERTEX_BUFFER_BIND_ID, 1, &vkvb, offsets);
-    vkCmdBindIndexBuffer(drawCmdBuffers_[i], vkib, 0, VK_INDEX_TYPE_UINT32);
-    vkCmdDrawIndexed(drawCmdBuffers_[i], vkNode->vkMesh->indexCount, 1, 0, 0, 0);
-#endif
+    // base pass starts here
+    {
+      VkRenderPassBeginInfo renderPassBeginInfo = initializers::RenderPassBeginInfo();
+      renderPassBeginInfo.renderPass = GetBasePassVkHandle();
+      renderPassBeginInfo.renderArea.offset.x = 0;
+      renderPassBeginInfo.renderArea.offset.y = 0;
+      renderPassBeginInfo.renderArea.extent.width = width;
+      renderPassBeginInfo.renderArea.extent.height = height;
+      renderPassBeginInfo.clearValueCount = 2;
+      renderPassBeginInfo.pClearValues = clearValues;
+      renderPassBeginInfo.framebuffer = basePass_->GetRenderPassData().frameBuffers[i];
 
-    RenderComponentBuildCommandBuffers(scene, drawCmdBuffers_[i]);
+      // begin base pass
+      vkCmdBeginRenderPass(drawCmdBuffers_[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-    vkCmdEndRenderPass(drawCmdBuffers_[i]);
+      VkViewport viewport = initializers::Viewport((float)width, (float)height, 0.0f, 1.0f);
+      vkCmdSetViewport(drawCmdBuffers_[i], 0, 1, &viewport);
+
+      VkRect2D scissor = initializers::Rect2D(width, height, 0, 0);
+      vkCmdSetScissor(drawCmdBuffers_[i], 0, 1, &scissor);
+
+      // uint32_t dynamic_offset = 0;
+      // vkCmdBindDescriptorSets(drawCmdBuffers_[i], VK_PIPELINE_BIND_POINT_GRAPHICS, PipelineLayout(), 0, 1,
+      //                        GetDescriptorSetP(vkNode->descriptorSetHandle), 1, &dynamic_offset);
+      vkCmdBindPipeline(drawCmdBuffers_[i], VK_PIPELINE_BIND_POINT_GRAPHICS,
+                        basePass_->GetRenderPassData().pipelineHandle);
+
+      vkCmdBindDescriptorSets(drawCmdBuffers_[i], VK_PIPELINE_BIND_POINT_GRAPHICS, PipelineLayout(), 0, 1,
+                              &sharedDescriptorSet_, 0, nullptr);
+
+      VkDeviceSize offsets[1] = {0};
+      for (auto node_index = 0; node_index < vkNodeList.size(); node_index++) {
+        const auto& vkn = &vkNodeList[node_index];
+        auto vkvb = vkn->vkMesh->vertexBuffer->buffer();
+        auto vkib = vkn->vkMesh->indexBuffer->buffer();
+        vkCmdBindVertexBuffers(drawCmdBuffers_[i], VERTEX_BUFFER_BIND_ID, 1, &vkvb, offsets);
+        vkCmdBindIndexBuffer(drawCmdBuffers_[i], vkib, 0, VK_INDEX_TYPE_UINT32);
+
+        std::array<uint32_t, 2> offset_array;
+        offset_array[0] = node_index * uniformBuffers_.vertex_ub.alignment;
+        offset_array[1] = node_index * uniformBuffers_.fragment_ub.alignment;
+        vkCmdBindDescriptorSets(drawCmdBuffers_[i], VK_PIPELINE_BIND_POINT_GRAPHICS, PipelineLayout(), 1, 1,
+                                &vkn->descriptorSet, 2, &offset_array[0]);
+        vkCmdDrawIndexed(drawCmdBuffers_[i], vkn->vkMesh->indexCount, 1, 0, 0, 0);
+      }
+
+      RenderComponentBuildCommandBuffers(scene, drawCmdBuffers_[i]);
+
+      // end base pass
+      vkCmdEndRenderPass(drawCmdBuffers_[i]);
+    }
 
     VK_CHECK_RESULT(vkEndCommandBuffer(drawCmdBuffers_[i]));
   }

@@ -13,7 +13,7 @@ class TriangleApp : public VulkanApp {
  private:
   Scene scene;
 
-  void InitScene();
+  void InitScene() override;
 
  public:
   virtual void Render(double delta_time) override;

@@ -245,6 +245,68 @@ void VulkanBasePass::BuildPipeline() {
              renderPassData_.renderPassHandle, &renderPassData_.pipelineHandle, "BasePass");
 }
 
+void VulkanBasePass::SetupDescriptorSet() {
+#if 0
+  // TODO: pool size 怎么算的?
+  // Example uses one ubo and one image sampler
+  std::vector<VkDescriptorPoolSize> pool_sizes = {
+      initializers::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 4),
+      initializers::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 16),
+      initializers::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2)};
+
+  // TODO: maxSets 怎么算的?
+  VkDescriptorPoolCreateInfo descriptor_pool_create_info =
+      initializers::DescriptorPoolCreateInfo(static_cast<uint32_t>(pool_sizes.size()), pool_sizes.data(), 16);
+
+  VK_CHECK_RESULT(vkCreateDescriptorPool(context_->GetVkDevice(), &descriptor_pool_create_info, nullptr, &descriptorPool_));
+
+  // shared descriptor set layout
+  std::vector<VkDescriptorSetLayoutBinding> set_layout_bindings = {
+      // global shared uniform buffers
+      initializers::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                               VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0),
+  };
+
+  VkDescriptorSetLayoutCreateInfo descriptor_layout = initializers::DescriptorSetLayoutCreateInfo(
+      set_layout_bindings.data(), static_cast<uint32_t>(set_layout_bindings.size()));
+
+  VK_CHECK_RESULT(vkCreateDescriptorSetLayout(context_->GetVkDevice(), &descriptor_layout, nullptr, &descriptorSetLayouts_.shared));
+
+  // object descriptor set layout
+  set_layout_bindings = {
+      initializers::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT,
+                                               0),
+      initializers::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT,
+                                               1),
+      initializers::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT,
+                                               2),
+  };
+
+  descriptor_layout = initializers::DescriptorSetLayoutCreateInfo(
+      set_layout_bindings.data(), static_cast<uint32_t>(set_layout_bindings.size()));
+
+  VK_CHECK_RESULT(vkCreateDescriptorSetLayout(context_->GetVkDevice(), &descriptor_layout, nullptr, &descriptorSetLayouts_.object));
+
+  std::array<VkDescriptorSetLayout, 2> layouts = {descriptorSetLayouts_.shared, descriptorSetLayouts_.object};
+  VkPipelineLayoutCreateInfo pipeline_layout_create_info =
+      initializers::PipelineLayoutCreateInfo(layouts.data(), layouts.size());
+
+  VK_CHECK_RESULT(vkCreatePipelineLayout(context_->GetVkDevice(), &pipeline_layout_create_info, nullptr, &pipelineLayout_));
+
+  VkDescriptorSetAllocateInfo allocInfo =
+      initializers::DescriptorSetAllocateInfo(descriptorPool_, &descriptorSetLayouts_.shared, 1);
+  VK_CHECK_RESULT(vkAllocateDescriptorSets(context_->GetVkDevice(), &allocInfo, &sharedDescriptorSet_));
+
+  auto shared_descriptor = CreateDescriptor(&uniformBuffers_.shared_ub.buffer);
+  std::vector<VkWriteDescriptorSet> writeDescriptorSets = {
+      // Binding 0 : shared
+      initializers::WriteDescriptorSet(sharedDescriptorSet_, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &shared_descriptor),
+  };
+  vkUpdateDescriptorSets(context_->GetVkDevice(), static_cast<uint32_t>(writeDescriptorSets.size()),
+                         writeDescriptorSets.data(), 0, NULL);
+#endif
+}
+
 void VulkanBasePass::OnSceneChanged() { BuildPipeline(); }
 
 }  // namespace lvk

@@ -11,7 +11,7 @@ using lvk::VulkanApp;
 
 class MoveCameraApp : public VulkanApp {
  private:
-  void InitScene();
+  void InitScene() override;
 
  public:
   virtual void Update(float deltaTime) override;

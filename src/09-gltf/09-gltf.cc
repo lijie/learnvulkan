@@ -18,7 +18,7 @@ using lvk::VulkanApp;
 
 class GltfApp : public VulkanApp {
  private:
-  void InitScene();
+  void InitScene() override;
 
  public:
   virtual void Update(float deltaTime) override;
@@ -29,10 +29,12 @@ class GltfApp : public VulkanApp {
 void GltfApp::InitScene() {
   auto cube_mesh = MeshLoader::LoadMesh("..\\assets\\models\\teapot.gltf");
   // prepare resource
-  scene.meshList = {
-      // primitive::cube(),
-      *cube_mesh.get(),
-  };
+  scene.meshList.clear();
+  for (const auto& node : cube_mesh.nodes) {
+    if (node.MeshData) {
+      scene.meshList.push_back(*node.MeshData);
+    }
+  }
   scene.textureList = {
       {"../assets/texture.jpg"},
       {"../assets/mutou.png"},

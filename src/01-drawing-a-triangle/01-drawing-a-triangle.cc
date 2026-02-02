@@ -167,6 +167,8 @@ class DrawingTriangleApp {
 
   void Cleanup() {
     CleanupSwapChain();
+    
+    // Destroy synchronization objects
     for (auto i = 0; i < kMaxFramesInFlight; i++) {
       auto& cmd_buffer = frame_command_buffer_[i];
       vkDestroySemaphore(device_, cmd_buffer.render_finished_semaphore,
@@ -176,23 +178,23 @@ class DrawingTriangleApp {
       vkDestroyFence(device_, cmd_buffer.in_flight_fence, nullptr);
     }
 
+    // Destroy command pool and buffers
     vkDestroyCommandPool(device_, command_pool_, nullptr);
-    // for (auto framebuffer : swapchain_framebuffers_) {
-    //   vkDestroyFramebuffer(device_, framebuffer, nullptr);
-    // }
+    
+    // Destroy pipeline resources
     vkDestroyPipeline(device_, graphics_pipeline_, nullptr);
     vkDestroyPipelineLayout(device_, pipeline_layout_, nullptr);
     vkDestroyRenderPass(device_, render_pass_, nullptr);
-    // for (auto imageView : swapchain_image_views_) {
-    //   vkDestroyImageView(device_, imageView, nullptr);
-    // }
-    // vkDestroySwapchainKHR(device_, swapchain_, nullptr);
+    
+    // Destroy device and instance resources
     vkDestroyDevice(device_, nullptr);
     if (enableValidationLayers) {
       DestroyDebugUtilsMessengerEXT(instance_, debug_messenger_, nullptr);
     }
     vkDestroySurfaceKHR(instance_, surface_, nullptr);
     vkDestroyInstance(instance_, nullptr);
+    
+    // Destroy window and terminate GLFW
     glfwDestroyWindow(window_);
     glfwTerminate();
   }
@@ -745,6 +747,8 @@ class DrawingTriangleApp {
 
     if (vkCreateGraphicsPipelines(device_, VK_NULL_HANDLE, 1, &pipelineInfo,
                                   nullptr, &graphics_pipeline_) != VK_SUCCESS) {
+      vkDestroyShaderModule(device_, fragShaderModule, nullptr);
+      vkDestroyShaderModule(device_, vertShaderModule, nullptr);
       throw std::runtime_error("failed to create graphics pipeline!");
     }
 

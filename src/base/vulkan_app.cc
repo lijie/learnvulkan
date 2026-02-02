@@ -281,6 +281,7 @@ bool VulkanApp::InitVulkan() {
   GetEnabledExtensions();
   std::cout << "GetEnabledExtensions " << std::endl;
 
+  enabledDeviceExtensions.push_back(VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME);
   VkResult res = vulkanDevice->CreateLogicalDevice(enabledFeatures, enabledDeviceExtensions, deviceCreatepNextChain);
   if (res != VK_SUCCESS) {
     tools::ExitFatal("Could not create Vulkan device: \n" + tools::ErrorString(res), res);

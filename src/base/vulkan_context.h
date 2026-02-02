@@ -299,6 +299,7 @@ class VulkanContext {
 
   std::vector<class VulkanRenderPass*> allRenderPass_;
   class VulkanRenderPass* basePass_{nullptr};
+  class VulkanRenderPass* shadowPass_{nullptr};
 
   VkResult CreateInstance(bool enableValidation);
   VkPipelineShaderStageCreateInfo LoadShader(std::string fileName, VkShaderStageFlagBits stage, VulkanDevice *device);

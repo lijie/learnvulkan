@@ -29,6 +29,8 @@ class VulkanRenderPass {
     // vulkan raw renderpass handle
     VkRenderPass renderPassHandle{VK_NULL_HANDLE};
     VkPipeline pipelineHandle{VK_NULL_HANDLE};
+    // output sampler
+    VkSampler sampler{VK_NULL_HANDLE};
   };
 
   VulkanRenderPass(VulkanContext* context, Scene* scene, RenderPassType type);

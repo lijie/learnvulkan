@@ -3,19 +3,33 @@ project(learnvulkan)
 
 find_package(Vulkan)
 include_directories(${Vulkan_INCLUDE_DIR})
-set(GLSLC ${Vulkan_INCLUDE_DIR}/../Bin/glslc.exe)
+# Platform-independent glslc path
+if(WIN32)
+    set(GLSLC ${Vulkan_INCLUDE_DIR}/../Bin/glslc.exe)
+else()
+    set(GLSLC ${Vulkan_INCLUDE_DIR}/../bin/glslc)
+endif()
 
 include_directories(${CMAKE_SOURCE_DIR}/src)
 
-# renderdoc path
-include_directories("C:\\Program Files\\RenderDoc")
+# Platform-specific settings
+if(WIN32)
+    # for w32
+    add_compile_definitions(VK_USE_PLATFORM_WIN32_KHR)
+    # for vsprintf
+    add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
+    
+    # renderdoc path (Windows only)
+    include_directories("C:\\Program Files\\RenderDoc")
+elseif(UNIX AND NOT APPLE)
+    # for Linux/X11
+    add_compile_definitions(VK_USE_PLATFORM_XLIB_KHR)
+elseif(APPLE)
+    # for macOS
+    add_compile_definitions(VK_USE_PLATFORM_METAL_EXT)
+endif()
 
 # set ( CMAKE_VERBOSE_MAKEFILE true )
-
-# for w32
-add_compile_definitions(VK_USE_PLATFORM_WIN32_KHR)
-# for vsprintf
-add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
 
 add_compile_definitions(GLM_FORCE_DEPTH_ZERO_TO_ONE)
 add_compile_definitions(GLM_FORCE_RADIANS)
@@ -38,30 +52,41 @@ add_library(base
 	src/base/vulkan_device.cc src/base/vulkan_buffer.cc src/base/vulkan_initializers.cc src/base/vulkan_tools.cc src/base/vulkan_app.cc src/base/vulkan_debug.cc
 	src/base/vulkan_swapchain.cc src/base/vulkan_pipelinebuilder.cc src/base/vertex_data.cc src/base/vulkan_texture.cc src/base/primitives.cc src/base/scene.cc
 	src/base/vulkan_context.cc src/base/window.cc src/base/transform.cc src/base/camera.cc src/base/material.cc src/base/lvk_math.cc src/base/input.cc
-	src/base/mesh_loader.cc src/base/directional_light.cc src/base/vulkan_ui.cc src/base/node.cc src/base/vulkan_renderpass_base.cc src/base/vulkan_renderpass.cc ${IMGUI_SOURCE}
+	src/base/mesh_loader.cc src/base/directional_light.cc src/base/vulkan_ui.cc src/base/node.cc src/base/vulkan_renderpass_base.cc src/base/vulkan_renderpass.cc
+	src/base/vulkan_renderpass_shadow.cc ${IMGUI_SOURCE}
 )
 target_include_directories(base PRIVATE ${CMAKE_SOURCE_DIR}/src/base)
 
-if (true)
+# Platform-specific library configuration
+if(WIN32)
 	ADD_LIBRARY(glfw STATIC IMPORTED)
 	SET_TARGET_PROPERTIES(glfw PROPERTIES IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/deps/glfw-3.3.8.bin.WIN64/lib-vc2022/glfw3.lib)
 	include_directories(${CMAKE_SOURCE_DIR}/deps/glfw-3.3.8.bin.WIN64/include)
-
-	include_directories(${CMAKE_SOURCE_DIR}/deps/stb)
-	include_directories(${CMAKE_SOURCE_DIR}/deps/gltf)
-	include_directories(${CMAKE_SOURCE_DIR}/deps/imgui)
-
-	# ADD_LIBRARY(assimp STATIC IMPORTED)
-	# SET_TARGET_PROPERTIES(assimp PROPERTIES IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}/deps/assimp/lib/assimp-vc142-mtd.lib)
-
+	
 	set(dep_libs glfw base Vulkan::Vulkan)
-	#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /utf-8 /std:c++20")
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20")
-	SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
-else ()
-  set(dep_libs ${dep_libs_common} ${dep_libs_linux})
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
-endif (true)
+elseif(UNIX AND NOT APPLE)
+	# Linux configuration
+	find_package(PkgConfig REQUIRED)
+	pkg_check_modules(GLFW REQUIRED glfw3)
+	include_directories(${GLFW_INCLUDE_DIRS})
+	
+	set(dep_libs ${GLFW_LIBRARIES} base Vulkan::Vulkan)
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20")
+elseif(APPLE)
+	# macOS configuration
+	find_package(PkgConfig REQUIRED)
+	pkg_check_modules(GLFW REQUIRED glfw3)
+	include_directories(${GLFW_INCLUDE_DIRS})
+	
+	set(dep_libs ${GLFW_LIBRARIES} base Vulkan::Vulkan)
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20")
+endif()
+
+# Common include directories
+include_directories(${CMAKE_SOURCE_DIR}/deps/stb)
+include_directories(${CMAKE_SOURCE_DIR}/deps/gltf)
+include_directories(${CMAKE_SOURCE_DIR}/deps/imgui)
 
 macro(add_shader_target)
 	add_custom_command(

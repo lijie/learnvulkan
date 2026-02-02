@@ -1,6 +1,7 @@
 #include "vulkan_renderpass.h"
 
 #include "vulkan_renderpass_base.h"
+#include "vulkan_renderpass_shadow.h"
 
 
 namespace lvk {
@@ -14,6 +15,9 @@ VulkanRenderPass* VulkanRenderPassBuilder::Build(VulkanContext* context, Scene* 
   switch (type) {
     case RenderPassType::BasePass:
       return new VulkanBasePass(context, scene, type);
+      break;
+    case lvk::RenderPassType::ShadowPass:
+      return new VulkanShadowPass(context, scene, type);
       break;
     default:
       break;

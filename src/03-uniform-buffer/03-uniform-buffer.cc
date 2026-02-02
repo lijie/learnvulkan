@@ -9,7 +9,7 @@
 #include <set>
 #include <vector>
 
-#define GLM_FORCE_RADIANS
+// GLM_FORCE_RADIANS is defined via command line
 #include <glm/gtc/matrix_transform.hpp>
 
 #include "glm/glm.hpp"

@@ -12,7 +12,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-#define GLM_FORCE_RADIANS
+// GLM_FORCE_RADIANS is defined via command line
 #include <glm/gtc/matrix_transform.hpp>
 
 #include "glm/glm.hpp"
