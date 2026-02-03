@@ -20,6 +20,7 @@
 #include "vulkan_pipelinebuilder.h"
 #include "vulkan_tools.h"
 #include "vulkan_renderpass.h"
+#include "vulkan_renderpass_shadow.h"
 
 #define VERTEX_BUFFER_BIND_ID 0
 
@@ -70,8 +71,14 @@ void VulkanContext::InitWithOptions(const VulkanContextOptions& options, VkPhysi
 void VulkanContext::CreateVulkanScene(Scene* scene, VulkanDevice* device) {
   VulkanRenderPassBuilder builder;
   allRenderPass_ = builder.BuildAll(this, scene);
-  // TODO(andrewli):
-  basePass_ = allRenderPass_[0];
+  
+  for (auto pass : allRenderPass_) {
+    if (pass->type() == RenderPassType::BasePass) {
+      basePass_ = pass;
+    } else if (pass->type() == RenderPassType::ShadowPass) {
+      shadowPass_ = pass;
+    }
+  }
 
   Prepare();
 
@@ -123,7 +130,9 @@ void VulkanContext::CreateVulkanScene(Scene* scene, VulkanDevice* device) {
   SetupDescriptorSetLayout(device);
   BuildPipelines();
 
-  basePass_->OnSceneChanged();
+  for (auto pass : allRenderPass_) {
+    pass->OnSceneChanged();
+  }
 
   for (int i = 0; i < vkNodeList.size(); i++) {
     FindOrCreateDescriptorSet(&vkNodeList[i]);
@@ -208,11 +217,41 @@ void VulkanContext::UpdateSharedUniformBuffers(Scene* scene) {
   uniformBuffers_.shared->camera_position = vec4f(scene->GetCamera()->GetLocation(), 1.0);
 
   const auto& light_array = scene->GetAllLights();
-  // uniformBuffers_.shared[0].light_num = light_array.size();
+  
+  // Default light MVP
+  uniformBuffers_.shared->light_mvp = glm::mat4(1.0f);
 
   for (auto i = 0; i < light_array.size(); i++) {
     uniformBuffers_.shared->light_direction = vec4f(light_array[i]->GetForwardVector(), 1.0);
     uniformBuffers_.shared->light_color = vec4f(light_array[i]->color(), 1.0);
+    
+    if (i == 0) { // Main light for shadow
+        auto light = light_array[i];
+        vec3f position = light->GetLocation();
+        
+        // Force look at origin for stable shadows
+        vec3f target = vec3f(0.0f, 0.0f, 0.0f);
+        vec3f direction = glm::normalize(target - position);
+        
+        // Update global light direction to match
+        uniformBuffers_.shared->light_direction = vec4f(direction, 1.0);
+
+        // Use a fixed up vector
+        vec3f up = vec3f(0.0f, 1.0f, 0.0f);
+        if (glm::abs(glm::dot(direction, up)) > 0.99f) {
+             up = vec3f(0.0f, 0.0f, 1.0f);
+        }
+        
+        mat4f view = glm::lookAt(position, target, up);
+        
+        float orthoSize = 20.0f; // Adjusted for scene scale
+        float nearPlane = 0.1f;
+        float farPlane = 200.0f;
+        mat4f proj = glm::ortho(-orthoSize, orthoSize, -orthoSize, orthoSize, nearPlane, farPlane);
+        proj[1][1] *= -1; // Flip Y for Vulkan
+        
+        uniformBuffers_.shared->light_mvp = proj * view;
+    }
   }
 
   const auto& camera_matrix = scene->GetCameraMatrix();
@@ -232,7 +271,7 @@ void VulkanContext::SetupDescriptorSetLayout(VulkanDevice* device) {
   std::vector<VkDescriptorPoolSize> pool_sizes = {
       initializers::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 4),
       initializers::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 16),
-      initializers::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2)};
+      initializers::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4)};
 
   // TODO: maxSets 怎么算的?
   VkDescriptorPoolCreateInfo descriptor_pool_create_info =
@@ -245,6 +284,9 @@ void VulkanContext::SetupDescriptorSetLayout(VulkanDevice* device) {
       // global shared uniform buffers
       initializers::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                                                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0),
+      // shadow map sampler
+      initializers::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                               VK_SHADER_STAGE_FRAGMENT_BIT, 1),
   };
 
   VkDescriptorSetLayoutCreateInfo descriptor_layout = initializers::DescriptorSetLayoutCreateInfo(
@@ -278,9 +320,20 @@ void VulkanContext::SetupDescriptorSetLayout(VulkanDevice* device) {
   VK_CHECK_RESULT(vkAllocateDescriptorSets(device_->device(), &allocInfo, &sharedDescriptorSet_));
 
   auto shared_descriptor = CreateDescriptor(&uniformBuffers_.shared_ub.buffer);
+
+  // Setup a descriptor image info for the current texture to be used as a combined image sampler
+  VkDescriptorImageInfo textureDescriptor;
+  textureDescriptor.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+  // TODO: remove cast
+  textureDescriptor.imageView = ((VulkanShadowPass*)shadowPass_)->GetDepthStencil().view;
+  textureDescriptor.sampler = shadowPass_->GetRenderPassData().sampler;
+
   std::vector<VkWriteDescriptorSet> writeDescriptorSets = {
       // Binding 0 : shared
       initializers::WriteDescriptorSet(sharedDescriptorSet_, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &shared_descriptor),
+      // Binding 1 : shadow map
+      initializers::WriteDescriptorSet(sharedDescriptorSet_, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1,
+                                       &textureDescriptor),
   };
   vkUpdateDescriptorSets(device_->device(), static_cast<uint32_t>(writeDescriptorSets.size()),
                          writeDescriptorSets.data(), 0, NULL);
@@ -778,16 +831,8 @@ void VulkanContext::BuildCommandBuffers(Scene* scene) {
     VK_CHECK_RESULT(vkBeginCommandBuffer(drawCmdBuffers_[i], &cmdBufInfo));
 
     // shadow pass
-    {
-      VkRenderPassBeginInfo renderPassBeginInfo = initializers::RenderPassBeginInfo();
-      renderPassBeginInfo.renderPass = GetBasePassVkHandle();
-      renderPassBeginInfo.renderArea.offset.x = 0;
-      renderPassBeginInfo.renderArea.offset.y = 0;
-      renderPassBeginInfo.renderArea.extent.width = width;
-      renderPassBeginInfo.renderArea.extent.height = height;
-      renderPassBeginInfo.clearValueCount = 2;
-      renderPassBeginInfo.pClearValues = clearValues;
-      renderPassBeginInfo.framebuffer = basePass_->GetRenderPassData().frameBuffers[i];
+    if (shadowPass_) {
+      shadowPass_->BuildCommandBuffer(i, drawCmdBuffers_[i], &cmdBufInfo);
     }
 
     // base pass starts here
@@ -914,7 +959,9 @@ void VulkanContext::Prepare() {
   SetupRenderPass();
   SetupFrameBuffer();
   #endif
-  basePass_->Prepare();
+  for (auto pass : allRenderPass_) {
+    pass->Prepare();
+  }
 
   RenderComponentPrepare();
 }

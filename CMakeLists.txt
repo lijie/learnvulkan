@@ -99,8 +99,10 @@ endmacro(add_shader_target)
 
 add_shader_target(uioverlay_vs src/shaders/uioverlay.vert build/uioverlay.vert.spv)
 add_shader_target(uioverlay_ps src/shaders/uioverlay.frag build/uioverlay.frag.spv)
+add_shader_target(shadow_vs src/shaders/shadow.vert build/shadow.vert.spv)
 add_dependencies(base uioverlay_vs)
 add_dependencies(base uioverlay_ps)
+add_dependencies(base shadow_vs)
 
 macro(add_vulkan_target)
 	add_executable(${ARGV0} src/${ARGV0}/${ARGV0}.cc)

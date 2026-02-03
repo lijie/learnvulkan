@@ -86,6 +86,7 @@ struct DescriptorSetKey {
 };
 
 class VulkanContext {
+  friend class VulkanShadowPass;
  public:
   // todo:
   VulkanContext();

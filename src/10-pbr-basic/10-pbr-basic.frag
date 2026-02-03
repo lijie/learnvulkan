@@ -12,11 +12,14 @@ layout (set = 0, binding = 0) uniform UBOShared
 	mat4 view;
 } ubo_shared;
 
+layout (set = 0, binding = 1) uniform sampler2D shadowMap;
+
 layout (set = 1, binding = 1) uniform sampler2D samplerColor;
 
 layout (location = 0) in vec2 inUV;
 layout (location = 1) in vec3 inNormal;
 layout (location = 2) in vec3 inWorldPosition;
+layout (location = 3) in vec4 inShadowCoord;
 
 layout (location = 0) out vec4 outFragColor;
 
@@ -55,6 +58,43 @@ vec3 F_Schlick(float cosTheta, float metallic)
 	return F;    
 }
 
+float textureProj(vec4 shadowCoord, vec2 off)
+{
+	float shadow = 1.0;
+	if ( shadowCoord.z > -1.0 && shadowCoord.z < 1.0 ) 
+	{
+		float dist = texture( shadowMap, shadowCoord.st + off ).r;
+		if ( shadowCoord.w > 0.0 && dist < shadowCoord.z ) 
+		{
+			shadow = 0.1;
+		}
+	}
+	return shadow;
+}
+
+float filterPCF(vec4 sc)
+{
+	ivec2 texDim = textureSize(shadowMap, 0);
+	float scale = 1.5;
+	float dx = scale * 1.0 / float(texDim.x);
+	float dy = scale * 1.0 / float(texDim.y);
+
+	float shadowFactor = 0.0;
+	int count = 0;
+	int range = 1;
+	
+	for (int x = -range; x <= range; x++)
+	{
+		for (int y = -range; y <= range; y++)
+		{
+			shadowFactor += textureProj(sc, vec2(dx*x, dy*y));
+			count++;
+		}
+	
+	}
+	return shadowFactor / count;
+}
+
 // Specular BRDF composition --------------------------------------------
 vec3 BRDF(vec3 L, vec3 V, vec3 N, float metallic, float roughness)
 {
@@ -88,18 +128,6 @@ vec3 BRDF(vec3 L, vec3 V, vec3 N, float metallic, float roughness)
 	return color;
 }
 
-// sample blinn phong test
-vec3 BlinnPhong(vec3 L, vec3 N, vec3 V)
-{
-	float diff = max(dot(L, N), 0.0);
-    // return diff * vec3(1.0, 1.0, 1.0);
-
-	vec3 HV = normalize(L + V);  
-    float spec = pow(max(dot(N, HV), 0.0), 32.0);
-
-	return spec * vec3(0.3) + diff * vec3(1.0);
-}
-
 void main() 
 {
 	vec3 N = normalize(inNormal);
@@ -112,12 +140,14 @@ void main()
 	Lo += BRDF(L, V, N, ubo_frag.metallic, ubo_frag.roughness);
 
 	vec3 color = ubo_frag.color.xyz / PI;
-	color += Lo;
+	
+    float shadow = filterPCF(inShadowCoord / inShadowCoord.w);
+    
+    color += Lo;
+    color *= shadow;
 
 	// Gamma correct
 	color = pow(color, vec3(0.4545));
 
-	// vec4 color = texture(samplerColor, inUV);
-	// BlinnPhong(L, N, V);
 	outFragColor = vec4(color, 1.0);
 }

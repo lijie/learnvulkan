@@ -9,6 +9,7 @@
 #include "vulkan_initializers.h"
 #include "vulkan_pipelinebuilder.h"
 #include "vulkan_tools.h"
+#include "vertex_data.h"
 
 namespace lvk {
 
@@ -114,19 +115,36 @@ void VulkanShadowPass::SetupDepthStencil() {
     imageViewCI.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
   }
   VK_CHECK_RESULT(vkCreateImageView(context_->GetVkDevice(), &imageViewCI, nullptr, &depthStencil_.view));
+
+  // Create sampler to sample from to depth attachment
+  // Used to sample in the fragment shader for shadowed rendering
+  VkFilter shadowmap_filter = VK_FILTER_LINEAR;
+  VkSamplerCreateInfo sampler = initializers::SamplerCreateInfo();
+  sampler.magFilter = shadowmap_filter;
+  sampler.minFilter = shadowmap_filter;
+  sampler.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+  sampler.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+  sampler.addressModeV = sampler.addressModeU;
+  sampler.addressModeW = sampler.addressModeU;
+  sampler.mipLodBias = 0.0f;
+  sampler.maxAnisotropy = 1.0f;
+  sampler.minLod = 0.0f;
+  sampler.maxLod = 1.0f;
+  sampler.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+  VK_CHECK_RESULT(vkCreateSampler(context_->GetVkDevice(), &sampler, nullptr, &renderPassData_.sampler));
 }
 
 void VulkanShadowPass::SetupFrameBuffer() {
-  VkImageView attachments[2];
+  VkImageView attachments[1];
 
   // Depth/Stencil attachment is the same for all frame buffers
-  attachments[1] = depthStencil_.view;
+  attachments[0] = depthStencil_.view;
 
   VkFramebufferCreateInfo frameBufferCreateInfo = {};
   frameBufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
   frameBufferCreateInfo.pNext = NULL;
   frameBufferCreateInfo.renderPass = renderPassData_.renderPassHandle;
-  frameBufferCreateInfo.attachmentCount = 2;
+  frameBufferCreateInfo.attachmentCount = 1;
   frameBufferCreateInfo.pAttachments = attachments;
   frameBufferCreateInfo.width = context_->width;
   frameBufferCreateInfo.height = context_->height;
@@ -135,8 +153,6 @@ void VulkanShadowPass::SetupFrameBuffer() {
   // Create frame buffers for every swap chain image
   frameBuffers_.resize(context_->GetSwapChainImageCount());
   for (uint32_t i = 0; i < frameBuffers_.size(); i++) {
-    // TODO(andrewli): bug? attachments[i] ?
-    attachments[0] = context_->GetSwapChainImageView(i);
     VK_CHECK_RESULT(vkCreateFramebuffer(context_->GetVkDevice(), &frameBufferCreateInfo, nullptr, &frameBuffers_[i]));
   }
 
@@ -153,10 +169,8 @@ static VkClearColorValue defaultClearColor = {{0.025f, 0.025f, 0.025f, 1.0f}};
 
 void VulkanShadowPass::BuildCommandBuffer(int cmdBufferIndex, VkCommandBuffer cmdBuffer,
                                         const VkCommandBufferBeginInfo* BeginInfo) {
-#if 0
-  VkClearValue clearValues[2];
-  clearValues[0].color = defaultClearColor;
-  clearValues[1].depthStencil = {1.0f, 0};
+  VkClearValue clearValues[1];
+  clearValues[0].depthStencil = {1.0f, 0};
 
   VkRenderPassBeginInfo renderPassBeginInfo = initializers::RenderPassBeginInfo();
   renderPassBeginInfo.renderPass = renderPassData_.renderPassHandle;
@@ -164,14 +178,13 @@ void VulkanShadowPass::BuildCommandBuffer(int cmdBufferIndex, VkCommandBuffer cm
   renderPassBeginInfo.renderArea.offset.y = 0;
   renderPassBeginInfo.renderArea.extent.width = context_->width;
   renderPassBeginInfo.renderArea.extent.height = context_->height;
-  renderPassBeginInfo.clearValueCount = 2;
+  renderPassBeginInfo.clearValueCount = 1;
   renderPassBeginInfo.pClearValues = clearValues;
 
-  const auto& vkNode = context_->GetVkNode(0);
   // Set target frame buffer
   renderPassBeginInfo.framebuffer = renderPassData_.frameBuffers[cmdBufferIndex];
 
-  VK_CHECK_RESULT(vkBeginCommandBuffer(cmdBuffer, BeginInfo));
+  // VK_CHECK_RESULT(vkBeginCommandBuffer(cmdBuffer, BeginInfo));
 
   vkCmdBeginRenderPass(cmdBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
@@ -181,30 +194,34 @@ void VulkanShadowPass::BuildCommandBuffer(int cmdBufferIndex, VkCommandBuffer cm
   VkRect2D scissor = initializers::Rect2D(context_->width, context_->height, 0, 0);
   vkCmdSetScissor(cmdBuffer, 0, 1, &scissor);
 
+  // Set depth bias (constant factor, clamp, slope factor)
+  vkCmdSetDepthBias(cmdBuffer, 1.25f, 0.0f, 1.75f);
+
   // uint32_t dynamic_offset = 0;
   // vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, PipelineLayout(), 0, 1,
   //                        GetDescriptorSetP(vkNode->descriptorSetHandle), 1, &dynamic_offset);
-  vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, GetPipeline(vkNode->pipelineHandle));
+  vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, renderPassData_.pipelineHandle);
 
-  vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, PipelineLayout(), 0, 1, &sharedDescriptorSet_, 0,
+  vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, context_->PipelineLayout(), 0, 1, &context_->sharedDescriptorSet_, 0,
                           nullptr);
 
   VkDeviceSize offsets[1] = {0};
+  const auto& vkNodeList = context_->GetVkNodeList();
   for (auto node_index = 0; node_index < vkNodeList.size(); node_index++) {
     const auto& vkn = &vkNodeList[node_index];
     auto vkvb = vkn->vkMesh->vertexBuffer->buffer();
     auto vkib = vkn->vkMesh->indexBuffer->buffer();
-    vkCmdBindVertexBuffers(cmdBuffer, VERTEX_BUFFER_BIND_ID, 1, &vkvb, offsets);
+    vkCmdBindVertexBuffers(cmdBuffer, 0, 1, &vkvb, offsets);
     vkCmdBindIndexBuffer(cmdBuffer, vkib, 0, VK_INDEX_TYPE_UINT32);
 
     std::array<uint32_t, 2> offset_array;
-    offset_array[0] = node_index * uniformBuffers_.vertex_ub.alignment;
-    offset_array[1] = node_index * uniformBuffers_.fragment_ub.alignment;
-    vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, PipelineLayout(), 1, 1, &vkn->descriptorSet, 2,
+    offset_array[0] = node_index * context_->uniformBuffers_.vertex_ub.alignment;
+    offset_array[1] = node_index * context_->uniformBuffers_.fragment_ub.alignment;
+    vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, context_->PipelineLayout(), 1, 1, &vkn->descriptorSet, 2,
                             &offset_array[0]);
     vkCmdDrawIndexed(cmdBuffer, vkn->vkMesh->indexCount, 1, 0, 0, 0);
   }
-#endif
+  vkCmdEndRenderPass(cmdBuffer);
 }
 
 void VulkanShadowPass::BuildPipeline() {
@@ -212,11 +229,11 @@ void VulkanShadowPass::BuildPipeline() {
   colorBlendAttachmentStates.push_back(initializers::PipelineColorBlendAttachmentState(0xf, VK_FALSE));
 
   std::vector<VkPipelineShaderStageCreateInfo> stageCreateInfo;
-  stageCreateInfo.emplace_back(context_->LoadVertexShader("shadow.vert.spv")),
+  stageCreateInfo.emplace_back(context_->LoadVertexShader("shadow.vert.spv"));
 
   // for general object
   VulkanPipelineBuilder()
-      .dynamicStates({VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR, VK_DYNAMIC_STATE_DEPTH_BIAS_ENABLE})
+      .dynamicStates({VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR, VK_DYNAMIC_STATE_DEPTH_BIAS})
       .primitiveTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
       .polygonMode(VK_POLYGON_MODE_FILL)
       .vertexInputState(VertexLayout::GetPiplineVertexInputState())

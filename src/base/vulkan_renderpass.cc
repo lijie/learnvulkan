@@ -9,6 +9,7 @@ namespace lvk {
 VulkanRenderPass::VulkanRenderPass(VulkanContext* context, Scene* scene, RenderPassType type) {
   context_ = context;
   scene_ = scene;
+  type_ = type;
 }
 
 VulkanRenderPass* VulkanRenderPassBuilder::Build(VulkanContext* context, Scene* scene, RenderPassType type) {
@@ -28,6 +29,7 @@ VulkanRenderPass* VulkanRenderPassBuilder::Build(VulkanContext* context, Scene* 
 
 std::vector<VulkanRenderPass*> VulkanRenderPassBuilder::BuildAll(VulkanContext* context, Scene* scene) {
   RenderPassType type_array[] = {
+      RenderPassType::ShadowPass,
       RenderPassType::BasePass,
   };
 

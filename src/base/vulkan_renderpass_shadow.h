@@ -25,6 +25,9 @@ class VulkanShadowPass : public VulkanRenderPass {
   void SetupRenderPass();
   void SetupDescriptorSet();
   void BuildPipeline();
+
+ public:
+   const FrameBufferAttachment& GetDepthStencil() { return depthStencil_; }
 };
 
 }  // namespace lvk

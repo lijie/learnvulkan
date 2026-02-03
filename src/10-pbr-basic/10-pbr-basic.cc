@@ -80,7 +80,7 @@ void PbrBasicApp::TestNode() {
 
 void PbrBasicApp::InitScene() {
 
-  TestNode();
+  // TestNode();
 
   // auto cube_mesh = MeshLoader::LoadMesh("..\\assets\\models\\teapot.gltf");
   // auto cube_mesh = MeshLoader::LoadMesh(tools::GetModelPath() + "teapot.gltf");
@@ -128,7 +128,7 @@ void PbrBasicApp::InitScene() {
 
 
   auto light = NewNode<DirectionalLight>(
-      Transform{.translation{0.0, 10.0, 0.0}, .rotation{0, 0, 0}, .scale{1.0, 1.0, 1.0}}, vec3f{1.0, 1.0, 1.0});
+      Transform{.translation{5.0, 10.0, 5.0}, .rotation{-45, 135, 0}, .scale{1.0, 1.0, 1.0}}, vec3f{1.0, 1.0, 1.0});
   scene.AddNode(light);
 }
 

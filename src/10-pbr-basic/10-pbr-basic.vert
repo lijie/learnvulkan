@@ -22,11 +22,19 @@ layout (set = 1, binding = 0) uniform UBO
 layout (location = 0) out vec2 outUV;
 layout (location = 1) out vec3 outNormal;
 layout (location = 2) out vec3 outWorldPosition;
+layout (location = 3) out vec4 outShadowCoord;
 
 out gl_PerVertex 
 {
     vec4 gl_Position;   
 };
+
+const mat4 biasMat = mat4( 
+	0.5, 0.0, 0.0, 0.0,
+	0.0, 0.5, 0.0, 0.0,
+	0.0, 0.0, 1.0, 0.0,
+	0.5, 0.5, 0.0, 1.0 
+);
 
 void main() 
 {
@@ -40,4 +48,6 @@ void main()
 	// outNormal = mat3(inverse(transpose(ubo.model))) * inNormal;
 	outNormal = mat3(ubo.model) * inNormal;
 	outWorldPosition = worldPos;
+
+    outShadowCoord = (biasMat * ubo_shared.light_mvp) * ubo.model * vec4(inPos, 1.0);
 }

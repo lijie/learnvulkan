@@ -42,10 +42,12 @@ class VulkanRenderPass {
   virtual void BuildCommandBuffer(int cmdBufferIndex, VkCommandBuffer cmdBuffer, const VkCommandBufferBeginInfo* BeginInfo) {};
 
   const RenderPassData& GetRenderPassData() { return renderPassData_; }
+  RenderPassType type() { return type_; }
 
  protected:
   VulkanContext* context_{nullptr};
   Scene* scene_{nullptr};
+  RenderPassType type_;
   // output pass data
   RenderPassData renderPassData_;
 };
